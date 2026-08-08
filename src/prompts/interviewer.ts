@@ -33,6 +33,12 @@ Rules:
 interface CandidateSummary {
   role: string;
   experience: string;
+  completedDaysCount?: number;
+  learningSignals?: { strengths: string[]; gaps: string[] }[];
+  completedTopics?: { day: number; title: string }[];
+  failedTopics?: { day: number; title: string }[];
+  skippedTopics?: { day: number; title: string }[];
+  perTopicSignals?: { day: number; title: string; strengths: string[]; gaps: string[] }[];
 }
 
 export function formatInterviewContext(
@@ -131,15 +137,92 @@ export function buildInterviewContext(params: {
     ? `\nCANDIDATE'S LATEST ANSWER (evaluate this):\n"${pendingAnswer}"\n`
     : '';
 
-  const finishInstruction = canFinish
-    ? `\nINSTRUCTION: The interview has met the minimum requirements (>= 8 questions & >= 4 curriculum days). You MAY set nextAction to "finish" ONLY if you have gathered sufficient evaluation signal. Otherwise, continue the interview naturally with further questions (9, 10, 11, etc.) by setting nextAction to "followup" or "new_topic".`
-    : `\nINSTRUCTION: Do NOT set nextAction to "finish" yet. Minimum requirements (8 questions & 4 curriculum days) have NOT been met. Keep asking questions.`;
+  const completedDaysCount = candidate.completedDaysCount ?? 0;
+  let modeStr = 'Full Interview';
+  let modeDesc = 'Standard technical interview evaluating multiple completed curriculum days.';
+  if (completedDaysCount === 2 || completedDaysCount === 3) {
+    modeStr = 'Adaptive Limited Interview';
+    modeDesc = 'Interview scoped to the few completed curriculum days. Probe deeper into these specific topics, testing practical trade-offs.';
+  } else if (completedDaysCount === 1) {
+    modeStr = 'Focused Diagnostic Interview';
+    modeDesc = 'Interview focused entirely on the single completed curriculum day. Ask deep questions, test practical trade-offs, and probe conceptual understanding of this specific topic.';
+  } else if (completedDaysCount === 0) {
+    modeStr = 'Beginner/Readiness Interview';
+    modeDesc = 'Candidate has no completed learning history. Conduct a readiness interview based on default curriculum topics to assess their foundational knowledge.';
+  }
 
-  return `CANDIDATE:
+  // Build per-topic learning history sections
+  const completedTopicsText = candidate.completedTopics && candidate.completedTopics.length > 0
+    ? candidate.completedTopics.map(t => {
+        const sig = candidate.perTopicSignals?.find(s => s.day === t.day);
+        const strengths = sig?.strengths.length ? `\n    Strengths: ${sig.strengths.join('; ')}` : '';
+        const gaps = sig?.gaps.length ? `\n    Gaps to probe further: ${sig.gaps.join('; ')}` : '';
+        return `  - Day ${t.day}: ${t.title}${strengths}${gaps}`;
+      }).join('\n')
+    : '  (none)';
+
+  const failedTopicsText = candidate.failedTopics && candidate.failedTopics.length > 0
+    ? candidate.failedTopics.map(t => {
+        const sig = candidate.perTopicSignals?.find(s => s.day === t.day);
+        const gaps = sig?.gaps.length ? `\n    Known misconceptions/gaps: ${sig.gaps.join('; ')}` : '';
+        return `  - Day ${t.day}: ${t.title}${gaps}`;
+      }).join('\n')
+    : '  (none)';
+
+  const skippedTopicsText = candidate.skippedTopics && candidate.skippedTopics.length > 0
+    ? candidate.skippedTopics.map(t => `  - Day ${t.day}: ${t.title}`).join('\n')
+    : '  (none)';
+
+  const minDaysRequired = completedDaysCount === 0 ? 4 : Math.min(4, completedDaysCount);
+
+  let finishInstruction = '';
+  if (canFinish) {
+    finishInstruction = `\nINSTRUCTION: The interview has met the minimum requirements (>= 8 questions & >= ${minDaysRequired} curriculum days covered).
+You MAY set nextAction to "finish" if you have gathered sufficient evaluation signal.
+- The preferred interview length is 10-14 questions.
+- 18 questions is a soft upper guideline, NOT a hard limit.
+- You may continue beyond 18 questions ONLY if genuinely necessary to assess unresolved weaknesses. Do NOT continue just to increase the question count.`;
+  } else {
+    finishInstruction = `\nINSTRUCTION: Do NOT set nextAction to "finish" yet. Requirements (8 questions & ${minDaysRequired} curriculum days covered) have NOT been met. Keep asking questions.`;
+  }
+
+  if (canFinish) {
+    finishInstruction += `
+If you set nextAction to "finish", you MUST generate detailed, personalized feedback.
+Your feedback MUST include:
+- overall assessment (detailed summary)
+- technical strengths (in the 'strengths' array)
+- weaknesses (in the 'gaps' array)
+- concepts demonstrated
+- misconceptions
+- curriculum coverage (specifically what was assessed)
+- evidence from candidate's answers
+- recommended learning areas (in the 'next' array)
+- interview mode (${modeStr})
+- number of questions asked (${questionCount + 1})
+
+Put the overall assessment, concepts demonstrated, misconceptions, evidence, curriculum coverage, interview mode, and number of questions asked in the "summary" string (you may format it with markdown).
+${completedDaysCount < 4 ? 'IMPORTANT: Since this is a limited-progress candidate, you MUST explicitly include the following phrase in the summary: "Assessment was based on the curriculum completed by this candidate." Do NOT claim that 4 curriculum days were assessed.' : ''}`;
+  }
+
+  return `INTERVIEW MODE: ${modeStr} (${modeDesc})
+
+CANDIDATE:
 Role: ${candidate.role}
 Experience: ${candidate.experience}
+Completed Curriculum Days: ${completedDaysCount}
 
-ELIGIBLE CURRICULUM TOPICS FOR THIS CANDIDATE:
+CANDIDATE LEARNING HISTORY:
+COMPLETED TOPICS (validate depth, increase difficulty for strong answers):
+${completedTopicsText}
+
+FAILED TOPICS (probe fundamentals and misconceptions — do NOT treat these as mastered):
+${failedTopicsText}
+
+SKIPPED TOPICS (candidate has NOT studied these — do NOT ask as if they completed them):
+${skippedTopicsText}
+
+ELIGIBLE INTERVIEW TOPICS (completed + failed missions only — use these to select questions):
 ${eligibleSummary}
 
 CURRENT TOPIC:

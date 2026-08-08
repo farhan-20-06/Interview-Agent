@@ -7,8 +7,8 @@ import { CandidateDataError } from '../errors/candidate';
 
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 
-const DEFAULT_CANDIDATES_PATH = resolve(projectRoot, 'data/candidates.json');
-const DEFAULT_CURRICULUM_PATH = resolve(projectRoot, 'data/curriculum.json');
+const DEFAULT_CANDIDATES_PATH = resolve(projectRoot, 'data/candidates (1).json');
+const DEFAULT_CURRICULUM_PATH = resolve(projectRoot, 'data/curriculum (2).json');
 
 let cachedCandidates: CandidatesFile | null = null;
 let cachedCurriculum: Curriculum | null = null;

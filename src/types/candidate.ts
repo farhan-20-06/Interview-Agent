@@ -1,53 +1,53 @@
 import { z } from 'zod';
 
-export const MissionStatusSchema = z.enum([
-  'completed',
-  'skipped',
-  'failed',
-  'in_progress',
-  'not_started',
-]);
-
-export const MissionAttemptSchema = z.object({
-  attemptNumber: z.number().int().positive(),
-  score: z.number().optional(),
-  passed: z.boolean().optional(),
-  completedAt: z.string().optional(),
-  durationMinutes: z.number().optional(),
-});
-
-export const LearningSignalsSchema = z.object({
-  strengths: z.array(z.string()).default([]),
-  gaps: z.array(z.string()).default([]),
-  engagement: z.string().optional(),
-  notes: z.array(z.string()).default([]),
-});
+// ─── Real Data Schema (matches candidates (1).json) ──────────────────────────
 
 export const MissionSchema = z.object({
   day: z.number().int().positive(),
-  missionId: z.string(),
   title: z.string(),
-  status: MissionStatusSchema,
-  attempts: z.array(MissionAttemptSchema).default([]),
-  learningSignals: LearningSignalsSchema.optional(),
+  passed: z.boolean().optional(),
+  attempts: z.number().int().min(0).optional(),
+  skipped: z.boolean().optional(),
+});
+
+export const MemberSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  jobRole: z.string(),
+  yearsExperience: z.number().default(0),
+  education: z.string().optional(),
+  status: z.string().optional(),
+});
+
+export const SignalsSchema = z.object({
+  commitDays: z.number().optional(),
+  missionsCompleted: z.number().optional(),
+  missionsFirstTry: z.number().optional(),
 });
 
 export const CandidateSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  role: z.string(),
-  experience: z.string(),
-  cohort: z.string().optional(),
+  member: MemberSchema,
   missions: z.array(MissionSchema).default([]),
+  signals: SignalsSchema.optional(),
 });
 
 export const CandidatesFileSchema = z.object({
   candidates: z.array(CandidateSchema),
 });
 
-export type MissionStatus = z.infer<typeof MissionStatusSchema>;
-export type MissionAttempt = z.infer<typeof MissionAttemptSchema>;
-export type LearningSignals = z.infer<typeof LearningSignalsSchema>;
 export type Mission = z.infer<typeof MissionSchema>;
+export type Member = z.infer<typeof MemberSchema>;
+export type Signals = z.infer<typeof SignalsSchema>;
 export type Candidate = z.infer<typeof CandidateSchema>;
 export type CandidatesFile = z.infer<typeof CandidatesFileSchema>;
+
+// ─── Helper: Derive mission status from real data fields ─────────────────────
+
+export type MissionStatus = 'completed' | 'failed' | 'skipped' | 'in_progress';
+
+export function getMissionStatus(mission: Mission): MissionStatus {
+  if (mission.skipped === true) return 'skipped';
+  if (mission.passed === true) return 'completed';
+  if (mission.passed === false) return 'failed';
+  return 'in_progress';
+}

@@ -109,10 +109,6 @@
               <span class="card-title">Interview Progress</span>
               <span id="questionProgressText" class="progress-counter">Question 1</span>
             </div>
-            <div class="progress-bar-container">
-              <div id="progressBarFill" class="progress-bar-fill" style="width: 12.5%;"></div>
-            </div>
-            <p id="progressNote" class="progress-note">Minimum: 8 questions & 4 curriculum days</p>
           </div>
 
           <div class="sidebar-card coverage-card">
@@ -123,6 +119,10 @@
               <!-- Coverage items injected dynamically -->
             </div>
           </div>
+
+          <button id="btnEndInterview" class="btn btn-secondary" style="width: 100%; margin-top: 1rem; border: 1px solid var(--border-subtle); color: var(--text-muted); background: transparent;">
+            End Interview Early
+          </button>
         </aside>
 
         <!-- Right Main Chat Area -->
@@ -145,7 +145,7 @@
           </div>
 
           <!-- Answer Input Controls -->
-          <div class="chat-input-area">
+          <div class="chat-input-area" id="answerInputArea">
             <textarea 
               id="answerInput" 
               class="answer-textarea" 
@@ -159,6 +159,14 @@
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
               </button>
             </div>
+          </div>
+
+          <!-- View Results Button Area -->
+          <div class="chat-input-area hidden" id="viewResultsArea" style="justify-content: center; align-items: center; padding: 2rem 1rem;">
+            <button id="btnViewResults" class="btn btn-primary" style="width: auto; padding: 0.8rem 2.5rem; font-size: 1.1rem; display: flex; align-items: center; gap: 0.5rem; background: var(--success); border-color: var(--success);">
+              <span>View Interview Results</span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </button>
           </div>
 
         </div>

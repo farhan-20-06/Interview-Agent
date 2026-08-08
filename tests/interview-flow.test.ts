@@ -61,41 +61,21 @@ vi.mock('../src/services/candidate-data.js', async () => {
 // ─── Test Helpers ─────────────────────────────────────────────────────────────
 
 const MOCK_CANDIDATE = {
-  id: 'cand-001',
-  name: 'Alex Chen',
-  role: 'AI Engineer',
-  experience: '2 years',
-  cohort: '2026-Q1',
+  member: {
+    id: 'cand-001',
+    name: 'Alex Chen',
+    jobRole: 'AI Engineer',
+    yearsExperience: 2,
+    education: 'MS Computer Science',
+    status: 'COMPLETED',
+  },
   missions: [
-    {
-      day: 1,
-      missionId: 'day-1-foundations',
-      title: 'AI Engineering Foundations',
-      status: 'completed' as const,
-      attempts: [{ attemptNumber: 1, score: 90, passed: true }],
-    },
-    {
-      day: 7,
-      missionId: 'day-7-embeddings',
-      title: 'Embeddings',
-      status: 'completed' as const,
-      attempts: [],
-    },
-    {
-      day: 8,
-      missionId: 'day-8-vector-db',
-      title: 'Vector Databases',
-      status: 'completed' as const,
-      attempts: [],
-    },
-    {
-      day: 10,
-      missionId: 'day-10-retrieval',
-      title: 'Retrieval and Matching Engine',
-      status: 'completed' as const,
-      attempts: [],
-    },
+    { day: 1, title: 'AI Engineering Foundations', passed: true as const, attempts: 1 },
+    { day: 7, title: 'Embeddings', passed: true as const, attempts: 1 },
+    { day: 8, title: 'Vector Databases', passed: true as const, attempts: 1 },
+    { day: 10, title: 'Retrieval and Matching Engine', passed: true as const, attempts: 1 },
   ],
+  signals: { commitDays: 4, missionsCompleted: 4, missionsFirstTry: 4 },
 };
 
 function makeMockDecision(overrides: Partial<InterviewDecision> = {}): InterviewDecision {
@@ -394,5 +374,149 @@ describe('Interview API Contract & Flow', () => {
 
     const sessionAfterFinish = getSession(sessionId);
     expect(sessionAfterFinish!.questionCount).toBe(10);
+  });
+
+  // ─── 10. Limited Progress Candidate ──────────────────────────────────────────
+
+  it('10. handles limited progress candidate (1 completed day) without crashing', async () => {
+    const sessionId = 'test-session-010';
+    const limitedCandidate = {
+      member: {
+        id: 'cand-002',
+        name: 'Jordan Lee',
+        jobRole: 'ML Engineer',
+        yearsExperience: 4,
+        education: 'BS Computer Science',
+        status: 'COMPLETED',
+      },
+      missions: [
+        { day: 1, title: 'AI Engineering Foundations', passed: true as const, attempts: 1 },
+      ],
+      signals: { commitDays: 1, missionsCompleted: 1, missionsFirstTry: 1 },
+    };
+
+    // Start
+    const startRes = makeResponse();
+    await interviewHandler(makeRequest({ sessionId, candidate: limitedCandidate }), startRes.res);
+    expect(startRes.status()).toBe(200);
+
+    const session = getSession(sessionId);
+    expect(session).not.toBeNull();
+    expect(session!.eligibleTopics.length).toBe(1);
+
+    // Continue to Q8
+    for (let i = 0; i < 7; i++) {
+      mockService.generateInterviewDecision.mockResolvedValue(
+        makeMockDecision({
+          nextAction: 'followup',
+          topic: { day: 1, title: 'AI Engineering Foundations' },
+        })
+      );
+      await interviewHandler(makeRequest({ sessionId, message: `Answer ${i + 1}` }), makeResponse().res);
+    }
+
+    // Q8: Finish
+    mockService.generateInterviewDecision.mockResolvedValue(makeFinishDecision());
+    const finalRes = makeResponse();
+    await interviewHandler(makeRequest({ sessionId, message: 'Final answer.' }), finalRes.res);
+
+    expect(finalRes.status()).toBe(200);
+    const d = finalRes.data();
+    expect(d.done).toBe(true);
+    expect(d.feedback).toBeDefined();
+  });
+
+  // ─── 11. Beginner Candidate ──────────────────────────────────────────────────
+
+  it('11. handles beginner candidate (0 completed days) without crashing', async () => {
+    const sessionId = 'test-session-011';
+    const beginnerCandidate = {
+      member: {
+        id: 'cand-003',
+        name: 'Taylor Swift',
+        jobRole: 'Junior AI Engineer',
+        yearsExperience: 0,
+        education: 'None',
+        status: 'COMPLETED',
+      },
+      missions: [] as any[],
+      signals: { commitDays: 0, missionsCompleted: 0, missionsFirstTry: 0 },
+    };
+
+    // Start
+    const startRes = makeResponse();
+    await interviewHandler(makeRequest({ sessionId, candidate: beginnerCandidate }), startRes.res);
+    expect(startRes.status()).toBe(200);
+
+    const session = getSession(sessionId);
+    expect(session).not.toBeNull();
+    expect(session!.eligibleTopics.length).toBeGreaterThan(0);
+
+    // Q8: Finish
+    for (let i = 0; i < 7; i++) {
+      mockService.generateInterviewDecision.mockResolvedValue(
+        makeMockDecision({
+          nextAction: 'followup',
+          topic: { day: 1, title: 'AI Engineering Foundations' },
+        })
+      );
+      await interviewHandler(makeRequest({ sessionId, message: `Answer ${i + 1}` }), makeResponse().res);
+    }
+
+    mockService.generateInterviewDecision.mockResolvedValue(makeFinishDecision());
+    const finalRes = makeResponse();
+    await interviewHandler(makeRequest({ sessionId, message: 'Final answer.' }), finalRes.res);
+
+    expect(finalRes.status()).toBe(200);
+    const d = finalRes.data();
+    expect(d.done).toBe(true);
+    expect(d.feedback).toBeDefined();
+  });
+
+  // ─── 12. Soft Guideline at Q18 ──────────────────────────────────────────────────
+
+  it('12. allows continuing beyond 18 questions if LLM decides to (soft guideline)', async () => {
+    const sessionId = 'test-session-012';
+
+    // Start
+    await interviewHandler(makeRequest({ sessionId, candidate: MOCK_CANDIDATE }), makeResponse().res);
+
+    const days = [1, 7, 8, 10];
+    const titles = ['Foundations', 'Embeddings', 'Vector DB', 'Retrieval'];
+
+    // Q1 to Q17: LLM keeps asking questions, covering 4 distinct days in the first 4 questions
+    for (let i = 0; i < 17; i++) {
+      mockService.generateInterviewDecision.mockResolvedValue(
+        makeMockDecision({
+          nextAction: i < 4 ? 'new_topic' : 'followup',
+          topic: { day: days[i % 4]!, title: titles[i % 4]! },
+        })
+      );
+      await interviewHandler(makeRequest({ sessionId, message: `Answer ${i + 1}` }), makeResponse().res);
+    }
+
+    // Q18: candidate answers, newQuestionCount becomes 18. Backend should NOT force finish.
+    mockService.generateInterviewDecision.mockResolvedValue(
+      makeMockDecision({
+        nextAction: 'followup', // LLM still wants followup!
+        topic: { day: 1, title: 'AI Engineering Foundations' },
+      })
+    );
+    const q18Res = makeResponse();
+    await interviewHandler(makeRequest({ sessionId, message: 'Answer 18' }), q18Res.res);
+
+    expect(q18Res.status()).toBe(200);
+    const d18 = q18Res.data();
+    expect(d18.done).toBe(false); // NO forced finish!
+
+    // Q19: finally finish
+    mockService.generateInterviewDecision.mockResolvedValue(makeFinishDecision());
+    const finalRes = makeResponse();
+    await interviewHandler(makeRequest({ sessionId, message: 'Answer 19' }), finalRes.res);
+
+    expect(finalRes.status()).toBe(200);
+    const dFinal = finalRes.data();
+    expect(dFinal.done).toBe(true);
+    expect(dFinal.feedback).toBeDefined();
   });
 });

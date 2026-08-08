@@ -55,7 +55,7 @@ export function createSession(
 
   const session: InterviewSession = {
     sessionId: finalSessionId,
-    candidateId: candidate.id,
+    candidateId: candidate.member.id,
     candidate,
     questionCount: 0,
     coveredDays: [],

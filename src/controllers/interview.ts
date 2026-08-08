@@ -16,7 +16,7 @@ import {
 } from '../services/candidate-intelligence.js';
 import { getCurriculumData } from '../services/candidate-data.js';
 import { INTERVIEWER_SYSTEM_PROMPT, buildInterviewContext } from '../prompts/interviewer.js';
-import { CandidateSchema, Candidate } from '../types/candidate.js';
+import { CandidateSchema, Candidate, getMissionStatus } from '../types/candidate.js';
 import { InterviewDecision } from '../types/interview.js';
 
 // ─── Hard Constraints ─────────────────────────────────────────────────────────
@@ -46,6 +46,58 @@ function replyFinished(reply: string, feedback: object) {
   return { reply, done: true, feedback };
 }
 
+// ─── Count completed or failed curriculum days for a candidate ────────────────
+
+function countCompletedOrFailedDays(candidate: Candidate): number {
+  const days = new Set<number>();
+  for (const m of candidate.missions) {
+    const status = getMissionStatus(m);
+    if (status === 'completed' || status === 'failed') {
+      days.add(m.day);
+    }
+  }
+  return days.size;
+}
+
+// ─── Build per-topic candidate profile for the LLM prompt ────────────────────
+
+function buildTopicLists(candidate: Candidate) {
+  const completedTopics = candidate.missions
+    .filter((m) => getMissionStatus(m) === 'completed')
+    .map((m) => ({ day: m.day, title: m.title }));
+
+  const failedTopics = candidate.missions
+    .filter((m) => getMissionStatus(m) === 'failed')
+    .map((m) => ({ day: m.day, title: m.title }));
+
+  const skippedTopics = candidate.missions
+    .filter((m) => getMissionStatus(m) === 'skipped')
+    .map((m) => ({ day: m.day, title: m.title }));
+
+  // Derive per-topic signals from attempts count (no learningSignals in real data)
+  const perTopicSignals = candidate.missions
+    .filter((m) => !m.skipped)
+    .map((m) => {
+      const status = getMissionStatus(m);
+      const attempts = m.attempts ?? 1;
+      const strengths: string[] = [];
+      const gaps: string[] = [];
+
+      if (status === 'completed' && attempts === 1) {
+        strengths.push('Passed on first attempt');
+      } else if (status === 'completed' && attempts >= 3) {
+        gaps.push(`Required ${attempts} attempts before passing`);
+      }
+      if (status === 'failed') {
+        gaps.push(`Did not pass despite ${attempts} attempt${attempts > 1 ? 's' : ''}`);
+      }
+
+      return { day: m.day, title: m.title, strengths, gaps };
+    });
+
+  return { completedTopics, failedTopics, skippedTopics, perTopicSignals };
+}
+
 // ─── Constraint enforcement ───────────────────────────────────────────────────
 
 function enforceConstraints(
@@ -54,8 +106,13 @@ function enforceConstraints(
   newQuestionCount: number,
   newCoveredDays: number[]
 ): InterviewDecision {
+  const completedDaysCount = countCompletedOrFailedDays(session.candidate);
+  const minDaysRequired = completedDaysCount === 0
+    ? 1
+    : Math.min(MINIMUM_CURRICULUM_DAYS, completedDaysCount);
+
   const nowMeetsQuestionMin = newQuestionCount >= MINIMUM_QUESTIONS;
-  const nowMeetsDayMin = newCoveredDays.length >= MINIMUM_CURRICULUM_DAYS;
+  const nowMeetsDayMin = newCoveredDays.length >= minDaysRequired;
 
   if (decision.nextAction !== 'finish') return decision;
   if (nowMeetsQuestionMin && nowMeetsDayMin) return decision;
@@ -97,29 +154,42 @@ async function startInterview(
 ): Promise<void> {
   const curriculum = getCurriculumData();
 
-  // Build eligible interview topics using existing intelligence service
-  const eligibleTopics = selectInterviewTopics(candidate, curriculum, {
+  const completedDaysCount = countCompletedOrFailedDays(candidate);
+
+  // Build eligible interview topics
+  let eligibleTopics = selectInterviewTopics(candidate, curriculum, {
     maxTopics: 10,
     minDistinctDays: MINIMUM_CURRICULUM_DAYS,
   });
 
-  if (eligibleTopics.length < MINIMUM_CURRICULUM_DAYS) {
-    res.status(422).json({
-      error: `Candidate ${candidate.id} does not have enough completed curriculum days to interview (need ${MINIMUM_CURRICULUM_DAYS}, found ${eligibleTopics.length})`,
-    });
-    return;
+  if (completedDaysCount === 0) {
+    // No learning history — use default readiness topics from the real curriculum
+    const targetDays = [7, 8, 10, 12, 22];
+    const defaultDays = curriculum.days.filter((day) => targetDays.includes(day.day));
+    eligibleTopics = defaultDays.map((day) => ({
+      day: day.day,
+      title: day.title,
+      objectives: day.objectives,
+      reason: 'Readiness Assessment — default curriculum topic (no candidate history)',
+    }));
   }
 
   // Create session
   const session = createSession(candidate, eligibleTopics, sessionId);
-
-  // Select first topic
   const firstTopic = eligibleTopics[0]!;
 
-  // Ask the LLM to open the interview with the first question
-  const gemini = getGeminiService();
+  const { completedTopics, failedTopics, skippedTopics, perTopicSignals } = buildTopicLists(candidate);
+
   const context = buildInterviewContext({
-    candidate: { role: candidate.role, experience: candidate.experience },
+    candidate: {
+      role: candidate.member.jobRole,
+      experience: `${candidate.member.yearsExperience} years`,
+      completedDaysCount,
+      completedTopics,
+      failedTopics,
+      skippedTopics,
+      perTopicSignals,
+    },
     eligibleTopics,
     currentTopic: firstTopic,
     history: [],
@@ -134,6 +204,7 @@ async function startInterview(
 
 INSTRUCTION: This is the START of the interview. Write a warm, professional opening (1-2 sentences) and immediately ask your first technical question about Day ${firstTopic.day} — ${firstTopic.title}. Set nextAction to "followup". Set assessment score to 0, level to "developing", reason to "Interview opening".`;
 
+  const gemini = getGeminiService();
   let decision: InterviewDecision;
   try {
     decision = await gemini.generateInterviewDecision({
@@ -142,17 +213,16 @@ INSTRUCTION: This is the START of the interview. Write a warm, professional open
       temperature: 0.7,
     });
   } catch (err: any) {
-    res.status(502).json({ error: `LLM service error: ${err.message}` });
+    res.status(503).json({ error: 'The AI Interviewer is temporarily unavailable. Please try resending your answer.' });
     return;
   }
 
   const openingQuestion = decision.nextQuestion ?? '';
   if (!openingQuestion) {
-    res.status(502).json({ error: 'LLM returned no opening question' });
+    res.status(503).json({ error: 'The AI Interviewer failed to initialize. Please restart the interview.' });
     return;
   }
 
-  // Save the question shown so we can record it when the candidate answers
   updateSession(session.sessionId, {
     currentDay: firstTopic.day,
     currentTopic: firstTopic,
@@ -186,15 +256,28 @@ async function continueInterview(
     return;
   }
 
-  // Determine if we can allow the LLM to finish
   const newQuestionCount = session.questionCount + 1;
+  const completedDaysCount = countCompletedOrFailedDays(session.candidate);
+  const minDaysRequired = completedDaysCount === 0
+    ? 1
+    : Math.min(MINIMUM_CURRICULUM_DAYS, completedDaysCount);
+
   const canFinish =
     newQuestionCount >= MINIMUM_QUESTIONS &&
-    session.coveredDays.length >= MINIMUM_CURRICULUM_DAYS;
+    session.coveredDays.length >= minDaysRequired;
 
-  // Build context for LLM evaluation
+  const { completedTopics, failedTopics, skippedTopics, perTopicSignals } = buildTopicLists(session.candidate);
+
   const context = buildInterviewContext({
-    candidate: { role: session.candidate.role, experience: session.candidate.experience },
+    candidate: {
+      role: session.candidate.member.jobRole,
+      experience: `${session.candidate.member.yearsExperience} years`,
+      completedDaysCount,
+      completedTopics,
+      failedTopics,
+      skippedTopics,
+      perTopicSignals,
+    },
     eligibleTopics: session.eligibleTopics,
     currentTopic,
     history: session.conversationHistory,
@@ -205,7 +288,6 @@ async function continueInterview(
     pendingAnswer: candidateAnswer,
   });
 
-  // Call LLM
   const gemini = getGeminiService();
   let decision: InterviewDecision;
   try {
@@ -215,7 +297,7 @@ async function continueInterview(
       temperature: 0.7,
     });
   } catch (err: any) {
-    res.status(502).json({ error: `LLM service error: ${err.message}` });
+    res.status(503).json({ error: 'The AI Interviewer is temporarily unavailable. Please try resending your answer.' });
     return;
   }
 
@@ -233,8 +315,6 @@ async function continueInterview(
   };
 
   recordTurn(session, turn);
-
-  // newCoveredDays is updated by recordTurn (mutates session.coveredDays in place)
   const newCoveredDays = session.coveredDays;
 
   // ─── Apply hard constraints ───────────────────────────────────────────────
@@ -252,9 +332,6 @@ async function continueInterview(
   // ─── Adjust difficulty based on assessment ─────────────────────────────────
 
   const newDifficulty = adjustDifficulty(session.difficulty, decision.assessment.level);
-
-  // ─── Save session ──────────────────────────────────────────────────────────
-
   const nextQuestion = finalDecision.nextQuestion ?? '';
 
   updateSession(sessionId, {
@@ -288,7 +365,7 @@ async function continueInterview(
   }
 
   if (!nextQuestion) {
-    res.status(502).json({ error: 'LLM returned no next question' });
+    res.status(503).json({ error: 'The AI Interviewer failed to formulate the next question. Please try resending your answer.' });
     return;
   }
 

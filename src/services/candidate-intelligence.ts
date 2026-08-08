@@ -3,9 +3,8 @@ import { getCandidatesData, getCurriculumData } from './candidate-data';
 import {
   Candidate,
   CandidatesFile,
-  LearningSignals,
   Mission,
-  MissionAttempt,
+  getMissionStatus,
 } from '../types/candidate';
 import { Curriculum, CurriculumTopic } from '../types/curriculum';
 
@@ -23,7 +22,6 @@ export interface CompactAttempt {
   day: number;
   missionTitle: string;
   attemptNumber: number;
-  score?: number;
   passed?: boolean;
 }
 
@@ -77,30 +75,21 @@ function toCurriculumTopic(mission: Mission, curriculum: Curriculum): Curriculum
   };
 }
 
-function bestAttemptScore(mission: Mission): number | undefined {
-  const scores = mission.attempts
-    .map((attempt) => attempt.score)
-    .filter((score): score is number => typeof score === 'number');
-
-  if (scores.length === 0) {
-    return undefined;
-  }
-
-  return Math.max(...scores);
-}
-
 function missionPriority(mission: Mission): number {
-  const score = bestAttemptScore(mission);
+  const status = getMissionStatus(mission);
+  const attempts = mission.attempts ?? 1;
 
-  if (mission.status === 'failed') {
-    return 200 - (score ?? 0);
+  if (status === 'failed') {
+    // Higher priority for more attempts (signals more struggle)
+    return 200 + Math.min(attempts, 5);
   }
 
-  if (mission.status === 'completed') {
-    return 100 + (score ?? 0);
+  if (status === 'completed') {
+    // Fewer attempts = stronger completion; still prioritized for depth probing
+    return 100 + Math.max(0, 5 - attempts);
   }
 
-  if (mission.status === 'skipped') {
+  if (status === 'skipped') {
     return 10;
   }
 
@@ -108,11 +97,17 @@ function missionPriority(mission: Mission): number {
 }
 
 function selectionReason(mission: Mission): string {
-  if (mission.status === 'failed') {
-    return 'Failed mission — probe fundamentals and misconceptions';
+  const status = getMissionStatus(mission);
+  const attempts = mission.attempts ?? 1;
+
+  if (status === 'failed') {
+    return `Failed mission (${attempts} attempt${attempts > 1 ? 's' : ''}) — probe fundamentals and misconceptions`;
   }
 
-  if (mission.status === 'completed') {
+  if (status === 'completed') {
+    if (attempts > 2) {
+      return `Completed mission (took ${attempts} attempts) — validate depth and probe struggled areas`;
+    }
     return 'Completed mission — validate depth and increase difficulty';
   }
 
@@ -123,7 +118,7 @@ export function getCandidate(
   candidateId: string,
   candidates: CandidatesFile = getCandidatesData()
 ): Candidate {
-  const candidate = candidates.candidates.find((entry) => entry.id === candidateId);
+  const candidate = candidates.candidates.find((entry) => entry.member.id === candidateId);
   if (!candidate) {
     throw new CandidateNotFoundError(candidateId);
   }
@@ -131,25 +126,60 @@ export function getCandidate(
 }
 
 export function getCompletedMissions(candidate: Candidate): Mission[] {
-  return candidate.missions.filter((mission) => mission.status === 'completed');
+  return candidate.missions.filter((m) => getMissionStatus(m) === 'completed');
 }
 
 export function getSkippedMissions(candidate: Candidate): Mission[] {
-  return candidate.missions.filter((mission) => mission.status === 'skipped');
+  return candidate.missions.filter((m) => getMissionStatus(m) === 'skipped');
 }
 
 export function getFailedMissions(candidate: Candidate): Mission[] {
-  return candidate.missions.filter((mission) => mission.status === 'failed');
+  return candidate.missions.filter((m) => getMissionStatus(m) === 'failed');
 }
 
-export function getAttempts(candidate: Candidate): MissionAttempt[] {
-  return candidate.missions.flatMap((mission) => mission.attempts);
-}
-
-export function getLearningSignals(candidate: Candidate): LearningSignals[] {
+export function getAttempts(
+  candidate: Candidate
+): CompactAttempt[] {
   return candidate.missions
-    .map((mission) => mission.learningSignals)
-    .filter((signals): signals is LearningSignals => signals !== undefined);
+    .filter((m) => !m.skipped && m.attempts !== undefined && m.attempts > 0)
+    .flatMap((m) => {
+      const count = m.attempts!;
+      const status = getMissionStatus(m);
+      return Array.from({ length: count }, (_, i) => ({
+        day: m.day,
+        missionTitle: m.title,
+        attemptNumber: i + 1,
+        // Only the final attempt reflects the pass/fail outcome
+        passed: i + 1 === count ? status === 'completed' : undefined,
+      }));
+    });
+}
+
+export function getLearningSignals(candidate: Candidate): CompactLearningSignal[] {
+  const signals: CompactLearningSignal[] = [];
+
+  for (const mission of candidate.missions) {
+    const status = getMissionStatus(mission);
+    const attempts = mission.attempts ?? 0;
+    const strengths: string[] = [];
+    const gaps: string[] = [];
+
+    if (status === 'completed' && attempts === 1) {
+      strengths.push(`Passed on first attempt`);
+    } else if (status === 'completed' && attempts >= 3) {
+      gaps.push(`Required ${attempts} attempts before passing`);
+    }
+
+    if (status === 'failed') {
+      gaps.push(`Did not pass despite ${attempts} attempt${attempts > 1 ? 's' : ''} — probe fundamentals`);
+    }
+
+    if (strengths.length > 0 || gaps.length > 0) {
+      signals.push({ day: mission.day, missionTitle: mission.title, strengths, gaps });
+    }
+  }
+
+  return signals;
 }
 
 export function getCompletedTopics(
@@ -184,7 +214,7 @@ export function getEligibleTopics(
   }
 
   return candidate.missions
-    .filter((mission) => eligibleStatuses.has(mission.status))
+    .filter((mission) => eligibleStatuses.has(getMissionStatus(mission)))
     .sort((a, b) => a.day - b.day)
     .map((mission) => toCurriculumTopic(mission, curriculum));
 }
@@ -199,10 +229,9 @@ export function selectInterviewTopics(
 
   const eligibleMissions = candidate.missions
     .filter((mission) => {
-      if (mission.status === 'completed' || mission.status === 'failed') {
-        return true;
-      }
-      return options.allowSkipped === true && mission.status === 'skipped';
+      const status = getMissionStatus(mission);
+      if (status === 'completed' || status === 'failed') return true;
+      return options.allowSkipped === true && status === 'skipped';
     })
     .sort((a, b) => missionPriority(b) - missionPriority(a));
 
@@ -210,9 +239,7 @@ export function selectInterviewTopics(
   const usedDays = new Set<number>();
 
   for (const mission of eligibleMissions) {
-    if (usedDays.has(mission.day)) {
-      continue;
-    }
+    if (usedDays.has(mission.day)) continue;
 
     const topic = toCurriculumTopic(mission, curriculum);
     selected.push({
@@ -223,19 +250,12 @@ export function selectInterviewTopics(
     });
     usedDays.add(mission.day);
 
-    if (usedDays.size >= minDistinctDays) {
-      break;
-    }
+    if (usedDays.size >= minDistinctDays) break;
   }
 
   for (const mission of eligibleMissions) {
-    if (selected.length >= maxTopics) {
-      break;
-    }
-
-    if (usedDays.has(mission.day)) {
-      continue;
-    }
+    if (selected.length >= maxTopics) break;
+    if (usedDays.has(mission.day)) continue;
 
     const topic = toCurriculumTopic(mission, curriculum);
     selected.push({
@@ -245,27 +265,6 @@ export function selectInterviewTopics(
       reason: selectionReason(mission),
     });
     usedDays.add(mission.day);
-  }
-
-  for (const mission of eligibleMissions) {
-    if (selected.length >= maxTopics) {
-      break;
-    }
-
-    const alreadySelected = selected.some(
-      (topic) => topic.day === mission.day && topic.title === mission.title
-    );
-    if (alreadySelected) {
-      continue;
-    }
-
-    const topic = toCurriculumTopic(mission, curriculum);
-    selected.push({
-      day: topic.day,
-      title: topic.title,
-      objectives: topic.objectives,
-      reason: selectionReason(mission),
-    });
   }
 
   return selected.sort((a, b) => a.day - b.day);
@@ -289,46 +288,15 @@ export function buildCandidateContext(
     title,
   }));
 
-  const learningSignals = candidate.missions
-    .filter((mission) => mission.learningSignals)
-    .slice(0, MAX_SIGNALS_IN_CONTEXT)
-    .map((mission) => ({
-      day: mission.day,
-      missionTitle: mission.title,
-      strengths: mission.learningSignals?.strengths ?? [],
-      gaps: mission.learningSignals?.gaps ?? [],
-    }));
+  const learningSignals = getLearningSignals(candidate).slice(0, MAX_SIGNALS_IN_CONTEXT);
 
-  const recentAttempts = candidate.missions
-    .flatMap((mission) =>
-      mission.attempts.map((attempt) => ({
-        day: mission.day,
-        missionTitle: mission.title,
-        attemptNumber: attempt.attemptNumber,
-        score: attempt.score,
-        passed: attempt.passed,
-        completedAt: attempt.completedAt,
-      }))
-    )
-    .sort((a, b) => {
-      const aTime = a.completedAt ? Date.parse(a.completedAt) : 0;
-      const bTime = b.completedAt ? Date.parse(b.completedAt) : 0;
-      return bTime - aTime;
-    })
-    .slice(0, MAX_ATTEMPTS_IN_CONTEXT)
-    .map(({ day, missionTitle, attemptNumber, score, passed }) => ({
-      day,
-      missionTitle,
-      attemptNumber,
-      score,
-      passed,
-    }));
+  const recentAttempts = getAttempts(candidate).slice(0, MAX_ATTEMPTS_IN_CONTEXT);
 
   return {
-    candidateId: candidate.id,
-    name: candidate.name,
-    role: candidate.role,
-    experience: candidate.experience,
+    candidateId: candidate.member.id,
+    name: candidate.member.name,
+    role: candidate.member.jobRole,
+    experience: `${candidate.member.yearsExperience} years`,
     stats: {
       completed: getCompletedMissions(candidate).length,
       skipped: getSkippedMissions(candidate).length,

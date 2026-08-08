@@ -36,14 +36,17 @@ document.addEventListener('DOMContentLoaded', () => {
   const sidebarCandidateRole = document.getElementById('sidebarCandidateRole');
   const sidebarCandidateExp = document.getElementById('sidebarCandidateExp');
   const questionProgressText = document.getElementById('questionProgressText');
-  const progressBarFill = document.getElementById('progressBarFill');
   const curriculumCoverageList = document.getElementById('curriculumCoverageList');
   
   const chatHistory = document.getElementById('chatHistory');
   const chatErrorBanner = document.getElementById('chatErrorBanner');
   const typingIndicator = document.getElementById('typingIndicator');
+  const answerInputArea = document.getElementById('answerInputArea');
+  const viewResultsArea = document.getElementById('viewResultsArea');
+  const btnViewResults = document.getElementById('btnViewResults');
   const answerInput = document.getElementById('answerInput');
   const btnSendAnswer = document.getElementById('btnSendAnswer');
+  const btnEndInterview = document.getElementById('btnEndInterview');
 
   // Feedback DOM
   const feedbackCandidateMeta = document.getElementById('feedbackCandidateMeta');
@@ -116,29 +119,33 @@ document.addEventListener('DOMContentLoaded', () => {
       const card = document.createElement('div');
       card.className = 'candidate-card';
 
-      // DO NOT expose attempt counts or internal learning signals!
+      const name = cand.member?.name || 'Unknown';
+      const role = cand.member?.jobRole || 'Unknown Role';
+      const exp = cand.member?.yearsExperience !== undefined ? `${cand.member.yearsExperience} years` : 'Unknown';
+      const education = cand.member?.education || '';
+
       card.innerHTML = `
         <div class="candidate-card-header">
-          <div class="avatar-medium">${getInitials(cand.name)}</div>
+          <div class="avatar-medium">${getInitials(name)}</div>
           <div class="candidate-info">
-            <h3>${escapeHtml(cand.name)}</h3>
-            <span class="role-badge">${escapeHtml(cand.role)}</span>
+            <h3>${escapeHtml(name)}</h3>
+            <span class="role-badge">${escapeHtml(role)}</span>
           </div>
         </div>
 
         <div class="candidate-details">
           <div class="detail-row">
             <span class="detail-label">Experience:</span>
-            <span class="detail-value">${escapeHtml(cand.experience)}</span>
+            <span class="detail-value">${escapeHtml(exp)}</span>
           </div>
           <div class="detail-row">
-            <span class="detail-label">Cohort:</span>
-            <span class="detail-value">${escapeHtml(cand.cohort || 'Enterprise AI')}</span>
+            <span class="detail-label">Education:</span>
+            <span class="detail-value">${escapeHtml(education || 'Enterprise AI Cohort')}</span>
           </div>
         </div>
 
         <button class="btn btn-primary btn-select-candidate" style="width: 100%;">
-          <span>Select & Begin Interview</span>
+          <span>Select &amp; Begin Interview</span>
         </button>
       `;
 
@@ -162,6 +169,9 @@ document.addEventListener('DOMContentLoaded', () => {
     setupInterviewUI();
     showScreen('interview');
 
+    // Display a clean info message to the candidate
+    appendSystemMessage("Personalized Interview — Interview scope is based on your completed cohort progress.");
+
     // Initiate backend POST /api/interview
     await sendInterviewRequest({
       sessionId: state.sessionId,
@@ -170,13 +180,12 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function extractCandidateTopics(candidate) {
-    // Collect unique topics from candidate missions without showing internal scores
     const topicsMap = new Map();
 
     if (candidate.missions) {
       candidate.missions.forEach((m) => {
-        // Exclude skipped missions from eligible curriculum topics by default
-        if (m.status !== 'skipped') {
+        // Exclude skipped missions from sidebar curriculum display
+        if (!m.skipped) {
           topicsMap.set(m.day, {
             day: m.day,
             title: m.title || `Day ${m.day} Topic`,
@@ -185,14 +194,13 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    // Fallback if none mapped
     if (topicsMap.size === 0) {
       return [
-        { day: 1, title: 'AI Engineering Foundations' },
-        { day: 7, title: 'Embeddings' },
-        { day: 8, title: 'Vector Databases' },
-        { day: 10, title: 'Retrieval Engine' },
-        { day: 15, title: 'Evaluation & Guardrails' },
+        { day: 7, title: 'Embeddings Explained' },
+        { day: 8, title: 'Vector Databases Overview' },
+        { day: 10, title: 'The Retrieval & Matching Engine' },
+        { day: 12, title: 'Prompt Engineering Fundamentals' },
+        { day: 22, title: 'Multi-Agent Orchestration' },
       ];
     }
 
@@ -201,36 +209,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function setupInterviewUI() {
     const cand = state.selectedCandidate;
-    sidebarAvatar.textContent = getInitials(cand.name);
-    sidebarCandidateName.textContent = cand.name;
-    sidebarCandidateRole.textContent = cand.role;
-    sidebarCandidateExp.textContent = `${cand.experience} experience`;
+    const name = cand.member?.name || 'Unknown';
+    const role = cand.member?.jobRole || 'Unknown Role';
+    const exp = cand.member?.yearsExperience !== undefined ? `${cand.member.yearsExperience} years` : 'Unknown';
+
+    sidebarAvatar.textContent = getInitials(name);
+    sidebarCandidateName.textContent = name;
+    sidebarCandidateRole.textContent = role;
+    sidebarCandidateExp.textContent = `${exp} experience`;
 
     chatHistory.innerHTML = '';
     chatErrorBanner.classList.add('hidden');
     answerInput.value = '';
+    
+    if (answerInputArea) answerInputArea.classList.remove('hidden');
+    if (viewResultsArea) viewResultsArea.classList.add('hidden');
 
     updateProgressUI();
   }
 
-  const progressNote = document.getElementById('progressNote');
-
   function updateProgressUI() {
     const qCount = state.questionCount;
     questionProgressText.textContent = `Question ${qCount}`;
-
-    if (qCount <= 8) {
-      if (progressNote) {
-        progressNote.textContent = 'Minimum: 8 questions & 4 curriculum days';
-      }
-      const percentage = Math.min((qCount / 8) * 100, 100);
-      progressBarFill.style.width = `${percentage}%`;
-    } else {
-      if (progressNote) {
-        progressNote.textContent = `Minimum 8 questions met (${qCount} asked)`;
-      }
-      progressBarFill.style.width = '100%';
-    }
 
     renderCurriculumCoverage();
   }
@@ -309,11 +309,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (data.done) {
         state.isInterviewDone = true;
-        // Wait 1.5 seconds then show feedback
-        setTimeout(() => {
-          renderFeedbackScreen(data.feedback);
-          showScreen('feedback');
-        }, 1500);
+        renderFeedbackScreen(data.feedback);
+        
+        if (answerInputArea) answerInputArea.classList.add('hidden');
+        if (viewResultsArea) viewResultsArea.classList.remove('hidden');
       }
 
     } catch (err) {
@@ -328,13 +327,17 @@ document.addEventListener('DOMContentLoaded', () => {
     state.isLoading = loading;
     if (loading) {
       typingIndicator.classList.remove('hidden');
-      btnSendAnswer.disabled = true;
-      answerInput.disabled = true;
+      if (btnSendAnswer) btnSendAnswer.disabled = true;
+      if (answerInput) answerInput.disabled = true;
     } else {
       typingIndicator.classList.add('hidden');
-      btnSendAnswer.disabled = false;
-      answerInput.disabled = false;
-      answerInput.focus();
+      if (!state.isInterviewDone) {
+        if (btnSendAnswer) btnSendAnswer.disabled = false;
+        if (answerInput) {
+          answerInput.disabled = false;
+          answerInput.focus();
+        }
+      }
     }
   }
 
@@ -342,13 +345,26 @@ document.addEventListener('DOMContentLoaded', () => {
     const container = document.createElement('div');
     container.className = `chat-bubble-container ${sender}`;
 
-    const senderName = sender === 'interviewer' ? 'AI Interviewer' : state.selectedCandidate?.name || 'Candidate';
+    const senderName = sender === 'interviewer' ? 'AI Interviewer' : state.selectedCandidate?.member?.name || 'Candidate';
     
     container.innerHTML = `
       <div class="bubble-sender">${escapeHtml(senderName)}</div>
       <div class="chat-bubble">${escapeHtml(text)}</div>
     `;
 
+    chatHistory.appendChild(container);
+    scrollToBottom();
+  }
+
+  function appendSystemMessage(text) {
+    const container = document.createElement('div');
+    container.className = 'chat-bubble-container system';
+    container.style.cssText = 'display: flex; justify-content: center; margin: 1rem 0; width: 100%;';
+    container.innerHTML = `
+      <div style="background: rgba(255,255,255,0.05); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 0.5rem 1rem; font-size: 0.9rem; color: var(--text-muted); text-align: center; max-width: 80%;">
+        ${escapeHtml(text)}
+      </div>
+    `;
     chatHistory.appendChild(container);
     scrollToBottom();
   }
@@ -361,7 +377,9 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderFeedbackScreen(feedback) {
     const cand = state.selectedCandidate;
     const totalQuestions = state.questionCount;
-    feedbackCandidateMeta.textContent = `Technical Evaluation Report for ${cand.name} (${cand.role}) • ${totalQuestions} Questions Asked`;
+    const name = cand.member?.name || 'Unknown';
+    const role = cand.member?.jobRole || 'Unknown Role';
+    feedbackCandidateMeta.textContent = `Technical Evaluation Report for ${name} (${role}) • ${totalQuestions} Questions Asked`;
 
     if (!feedback) {
       feedbackSummaryText.textContent = 'Interview completed successfully.';
@@ -425,6 +443,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   btnSendAnswer.addEventListener('click', handleSendAnswer);
 
+  if (btnViewResults) {
+    btnViewResults.addEventListener('click', () => {
+      showScreen('feedback');
+    });
+  }
+
   answerInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
@@ -435,6 +459,20 @@ document.addEventListener('DOMContentLoaded', () => {
   btnRestart.addEventListener('click', () => {
     showScreen('candidateSelect');
   });
+
+  if (btnEndInterview) {
+    btnEndInterview.addEventListener('click', () => {
+      if (state.isLoading || state.isInterviewDone) return;
+      state.isInterviewDone = true;
+      showScreen('feedback');
+      renderFeedbackScreen({
+        summary: 'Interview ended early by user.',
+        strengths: ['Participated in the interview.'],
+        gaps: ['Insufficient questions answered for a complete assessment.'],
+        next: ['Complete a full session for accurate evaluation.']
+      });
+    });
+  }
 
   // Initial View
   showScreen('landing');

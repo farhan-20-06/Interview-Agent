@@ -67,8 +67,10 @@ describe('Frontend Static Serving & Candidates Endpoint', () => {
     expect(res.status).toBe(200);
     const body = await res.json() as any;
     expect(body.candidates).toBeDefined();
-    expect(body.candidates.length).toBeGreaterThan(0);
-    expect(body.candidates[0].name).toBe('Alex Chen');
+    expect(body.candidates.length).toBeGreaterThanOrEqual(1);
+    expect(body.candidates[0].member.name).toBeDefined();
+    expect(body.candidates[0].member.jobRole).toBeDefined();
+    expect(body.candidates[0].missions).toBeDefined();
   });
 
   it('returns curriculum via GET /api/curriculum', async () => {
