@@ -59,7 +59,8 @@ class OpenRouterServiceImpl implements GeminiService {
         },
         body: JSON.stringify({
           model: this.model,
-          messages: [{ role: 'user', content: prompt }]
+          messages: [{ role: 'user', content: prompt }],
+          max_tokens: 2048
         })
       });
 
@@ -94,6 +95,7 @@ class OpenRouterServiceImpl implements GeminiService {
           model: this.model,
           messages: [{ role: 'user', content: fullPrompt }],
           temperature: params.temperature ?? 0.7,
+          max_tokens: 2048
         })
       });
 
@@ -163,7 +165,7 @@ export function getGeminiService(): GeminiService {
     if (!apiKey) {
       throw new Error('OPENROUTER_API_KEY is not set in environment variables');
     }
-    const model = process.env.OPENROUTER_MODEL ?? 'google/gemini-flash-1.5-8b';
+    const model = process.env.OPENROUTER_MODEL ?? 'mistralai/mistral-7b-instruct:free';
     instance = new OpenRouterServiceImpl(apiKey, model);
   }
   return instance;

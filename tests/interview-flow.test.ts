@@ -351,4 +351,48 @@ describe('Interview API Contract & Flow', () => {
 
     expect(status()).toBe(200);
   });
+
+  // ─── 9. Continue Beyond 8 Questions ─────────────────────────────────────────
+
+  it('9. allows interview to continue beyond 8 questions until LLM determines finish', async () => {
+    const sessionId = 'test-session-009';
+
+    // Start
+    await interviewHandler(makeRequest({ sessionId, candidate: MOCK_CANDIDATE }), makeResponse().res);
+
+    const days = [1, 7, 8, 10, 1, 7, 8, 10, 1, 7];
+    const titles = ['Foundations', 'Embeddings', 'Vector DB', 'Retrieval', 'Foundations', 'Embeddings', 'Vector DB', 'Retrieval', 'Foundations', 'Embeddings'];
+
+    // Questions 1 to 9: cover 4 distinct curriculum days, then followups
+    for (let i = 0; i < 9; i++) {
+      mockService.generateInterviewDecision.mockResolvedValue(
+        makeMockDecision({
+          nextAction: i < 4 ? 'new_topic' : 'followup',
+          topic: { day: days[i]!, title: titles[i]! },
+          nextQuestion: `Question number ${i + 2}?`,
+        })
+      );
+      const res = makeResponse();
+      await interviewHandler(makeRequest({ sessionId, message: `Answer for Q${i + 1}` }), res.res);
+      expect(res.status()).toBe(200);
+      expect(res.data().done).toBe(false);
+    }
+
+    const sessionBeforeFinish = getSession(sessionId);
+    expect(sessionBeforeFinish!.questionCount).toBe(9);
+    expect(sessionBeforeFinish!.coveredDays.length).toBeGreaterThanOrEqual(4);
+
+    // Question 10 returns finish after meeting minimums
+    mockService.generateInterviewDecision.mockResolvedValue(makeFinishDecision());
+    const finalRes = makeResponse();
+    await interviewHandler(makeRequest({ sessionId, message: 'Final answer at Q10.' }), finalRes.res);
+
+    expect(finalRes.status()).toBe(200);
+    const d = finalRes.data();
+    expect(d.done).toBe(true);
+    expect(d.feedback).toBeDefined();
+
+    const sessionAfterFinish = getSession(sessionId);
+    expect(sessionAfterFinish!.questionCount).toBe(10);
+  });
 });

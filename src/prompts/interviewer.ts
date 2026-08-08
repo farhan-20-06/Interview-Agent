@@ -132,8 +132,8 @@ export function buildInterviewContext(params: {
     : '';
 
   const finishInstruction = canFinish
-    ? `\nINSTRUCTION: The interview has met minimum requirements. You MAY set nextAction to "finish" if you have enough signal, or continue with another question.`
-    : `\nINSTRUCTION: Do NOT set nextAction to "finish" yet. The interview has not met minimum requirements. Keep asking questions.`;
+    ? `\nINSTRUCTION: The interview has met the minimum requirements (>= 8 questions & >= 4 curriculum days). You MAY set nextAction to "finish" ONLY if you have gathered sufficient evaluation signal. Otherwise, continue the interview naturally with further questions (9, 10, 11, etc.) by setting nextAction to "followup" or "new_topic".`
+    : `\nINSTRUCTION: Do NOT set nextAction to "finish" yet. Minimum requirements (8 questions & 4 curriculum days) have NOT been met. Keep asking questions.`;
 
   return `CANDIDATE:
 Role: ${candidate.role}

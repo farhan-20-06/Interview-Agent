@@ -213,13 +213,24 @@ document.addEventListener('DOMContentLoaded', () => {
     updateProgressUI();
   }
 
-  function updateProgressUI() {
-    // 8 minimum questions
-    const maxProgressCount = Math.max(state.questionCount, 8);
-    const percentage = Math.min((state.questionCount / 8) * 100, 100);
+  const progressNote = document.getElementById('progressNote');
 
-    questionProgressText.textContent = `Question ${state.questionCount} / 8`;
-    progressBarFill.style.width = `${percentage}%`;
+  function updateProgressUI() {
+    const qCount = state.questionCount;
+    questionProgressText.textContent = `Question ${qCount}`;
+
+    if (qCount <= 8) {
+      if (progressNote) {
+        progressNote.textContent = 'Minimum: 8 questions & 4 curriculum days';
+      }
+      const percentage = Math.min((qCount / 8) * 100, 100);
+      progressBarFill.style.width = `${percentage}%`;
+    } else {
+      if (progressNote) {
+        progressNote.textContent = `Minimum 8 questions met (${qCount} asked)`;
+      }
+      progressBarFill.style.width = '100%';
+    }
 
     renderCurriculumCoverage();
   }
@@ -349,7 +360,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // ─── Feedback Rendering ────────────────────────────────────────────────────
   function renderFeedbackScreen(feedback) {
     const cand = state.selectedCandidate;
-    feedbackCandidateMeta.textContent = `Technical Evaluation Report for ${cand.name} (${cand.role})`;
+    const totalQuestions = state.questionCount;
+    feedbackCandidateMeta.textContent = `Technical Evaluation Report for ${cand.name} (${cand.role}) • ${totalQuestions} Questions Asked`;
 
     if (!feedback) {
       feedbackSummaryText.textContent = 'Interview completed successfully.';
