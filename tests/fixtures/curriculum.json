@@ -1,0 +1,47 @@
+{
+  "program": "31-Day Enterprise AI Engineering Cohort",
+  "days": [
+    {
+      "day": 1,
+      "title": "AI Engineering Foundations",
+      "objectives": ["Understand AI system lifecycle", "Set up a reproducible dev environment"],
+      "topics": ["AI fundamentals", "Python tooling"]
+    },
+    {
+      "day": 3,
+      "title": "Prompt Engineering",
+      "objectives": ["Design reliable prompts", "Evaluate prompt quality"],
+      "topics": ["Prompt patterns", "Evaluation rubrics"]
+    },
+    {
+      "day": 7,
+      "title": "Embeddings",
+      "objectives": ["Build embedding pipelines", "Compare embedding models"],
+      "topics": ["Vector representations", "Similarity search basics"]
+    },
+    {
+      "day": 8,
+      "title": "Vector Databases",
+      "objectives": ["Index vectors efficiently", "Query at scale"],
+      "topics": ["FAISS", "Qdrant", "HNSW"]
+    },
+    {
+      "day": 10,
+      "title": "Retrieval and Matching Engine",
+      "objectives": ["Implement semantic retrieval", "Tune recall and precision"],
+      "topics": ["Hybrid search", "Reranking"]
+    },
+    {
+      "day": 12,
+      "title": "Agent Orchestration",
+      "objectives": ["Design tool-using agents", "Manage multi-step workflows"],
+      "topics": ["ReAct", "Tool routing"]
+    },
+    {
+      "day": 15,
+      "title": "Evaluation and Guardrails",
+      "objectives": ["Measure answer quality", "Add safety guardrails"],
+      "topics": ["LLM evals", "Policy filters"]
+    }
+  ]
+}

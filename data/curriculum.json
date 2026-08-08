@@ -1,0 +1,191 @@
+{
+  "program": "31-Day Enterprise AI Engineering Cohort",
+  "days": [
+    {
+      "day": 1,
+      "title": "AI Engineering Foundations",
+      "objectives": ["Understand AI system lifecycle", "Set up a reproducible dev environment"],
+      "topics": ["AI fundamentals", "Python tooling"]
+    },
+    {
+      "day": 2,
+      "title": "LLM Fundamentals",
+      "objectives": ["Understand transformer architecture", "Compare LLM providers"],
+      "topics": ["Transformers", "GPT vs Claude vs Gemini", "Token limits"]
+    },
+    {
+      "day": 3,
+      "title": "Prompt Engineering",
+      "objectives": ["Design reliable prompts", "Evaluate prompt quality"],
+      "topics": ["Prompt patterns", "Evaluation rubrics"]
+    },
+    {
+      "day": 4,
+      "title": "Structured Output & Function Calling",
+      "objectives": ["Extract structured data from LLMs", "Implement tool use"],
+      "topics": ["JSON mode", "Function calling", "Schema validation"]
+    },
+    {
+      "day": 5,
+      "title": "API Design for AI Systems",
+      "objectives": ["Design AI-first REST APIs", "Handle async LLM patterns"],
+      "topics": ["API contracts", "Streaming", "Error handling"]
+    },
+    {
+      "day": 6,
+      "title": "Data Pipelines for AI",
+      "objectives": ["Build ETL for AI workloads", "Process unstructured data"],
+      "topics": ["Document parsing", "Chunking strategies", "Metadata extraction"]
+    },
+    {
+      "day": 7,
+      "title": "Embeddings",
+      "objectives": ["Build embedding pipelines", "Compare embedding models"],
+      "topics": ["Vector representations", "Similarity search basics"]
+    },
+    {
+      "day": 8,
+      "title": "Vector Databases",
+      "objectives": ["Index vectors efficiently", "Query at scale"],
+      "topics": ["FAISS", "Qdrant", "HNSW"]
+    },
+    {
+      "day": 9,
+      "title": "RAG Architecture",
+      "objectives": ["Build a retrieval-augmented generation pipeline", "Evaluate RAG quality"],
+      "topics": ["Document ingestion", "Context injection", "Hallucination reduction"]
+    },
+    {
+      "day": 10,
+      "title": "Retrieval and Matching Engine",
+      "objectives": ["Implement semantic retrieval", "Tune recall and precision"],
+      "topics": ["Hybrid search", "Reranking"]
+    },
+    {
+      "day": 11,
+      "title": "Context Window Management",
+      "objectives": ["Manage long contexts efficiently", "Compress conversation history"],
+      "topics": ["Token budgeting", "Summarization", "Context pruning"]
+    },
+    {
+      "day": 12,
+      "title": "Agent Orchestration",
+      "objectives": ["Design tool-using agents", "Manage multi-step workflows"],
+      "topics": ["ReAct", "Tool routing"]
+    },
+    {
+      "day": 13,
+      "title": "Memory Systems",
+      "objectives": ["Implement short and long-term agent memory", "Store and retrieve episodic memory"],
+      "topics": ["Episodic memory", "Working memory", "Memory retrieval"]
+    },
+    {
+      "day": 14,
+      "title": "Tool Use and Integration",
+      "objectives": ["Build custom AI tools", "Integrate external APIs safely"],
+      "topics": ["Tool schemas", "Safe execution", "Error propagation"]
+    },
+    {
+      "day": 15,
+      "title": "Evaluation and Guardrails",
+      "objectives": ["Measure answer quality", "Add safety guardrails"],
+      "topics": ["LLM evals", "Policy filters"]
+    },
+    {
+      "day": 16,
+      "title": "Fine-tuning Fundamentals",
+      "objectives": ["Understand when to fine-tune", "Prepare training data"],
+      "topics": ["LoRA", "Instruction tuning", "Dataset curation"]
+    },
+    {
+      "day": 17,
+      "title": "Production Deployment",
+      "objectives": ["Deploy AI services at scale", "Monitor LLM endpoints"],
+      "topics": ["Containerization", "Load balancing", "Latency profiling"]
+    },
+    {
+      "day": 18,
+      "title": "Observability for AI",
+      "objectives": ["Trace LLM calls end-to-end", "Debug prompt regressions"],
+      "topics": ["Tracing", "Logging", "Alerting"]
+    },
+    {
+      "day": 19,
+      "title": "Cost Optimization",
+      "objectives": ["Reduce LLM inference cost", "Choose the right model for the task"],
+      "topics": ["Model routing", "Caching", "Prompt compression"]
+    },
+    {
+      "day": 20,
+      "title": "Security and Privacy in AI",
+      "objectives": ["Prevent prompt injection", "Handle PII in AI pipelines"],
+      "topics": ["Prompt injection", "Data masking", "Access control"]
+    },
+    {
+      "day": 21,
+      "title": "Multi-Modal AI",
+      "objectives": ["Work with image and audio inputs", "Build cross-modal pipelines"],
+      "topics": ["Vision LLMs", "Audio transcription", "Cross-modal retrieval"]
+    },
+    {
+      "day": 22,
+      "title": "Multi-Agent Systems",
+      "objectives": ["Coordinate multiple AI agents", "Implement agent communication protocols"],
+      "topics": ["Agent networks", "Message passing", "Consensus mechanisms"]
+    },
+    {
+      "day": 23,
+      "title": "Model Context Protocol (MCP)",
+      "objectives": ["Understand the MCP standard", "Build MCP-compatible tools"],
+      "topics": ["MCP specification", "Tool definitions", "Context sharing"]
+    },
+    {
+      "day": 24,
+      "title": "AI System Architecture",
+      "objectives": ["Design scalable AI systems", "Apply AI architecture patterns"],
+      "topics": ["System design", "Event-driven AI", "Microservices for AI"]
+    },
+    {
+      "day": 25,
+      "title": "Streaming and Real-time AI",
+      "objectives": ["Build streaming LLM interfaces", "Handle real-time events in AI pipelines"],
+      "topics": ["SSE", "WebSockets", "Streaming completions"]
+    },
+    {
+      "day": 26,
+      "title": "AI Testing Strategies",
+      "objectives": ["Test LLM-powered features", "Prevent prompt regressions"],
+      "topics": ["Prompt testing", "Golden datasets", "Regression suites"]
+    },
+    {
+      "day": 27,
+      "title": "Hybrid AI Architectures",
+      "objectives": ["Combine deterministic and probabilistic systems", "Fallback strategies"],
+      "topics": ["Rule-based fallbacks", "Confidence thresholds", "Human-in-the-loop"]
+    },
+    {
+      "day": 28,
+      "title": "AI Product Design",
+      "objectives": ["Design AI-first user experiences", "Handle AI failures gracefully"],
+      "topics": ["UX patterns for AI", "Loading states", "Error messaging"]
+    },
+    {
+      "day": 29,
+      "title": "Enterprise AI Governance",
+      "objectives": ["Apply AI governance frameworks", "Manage model versioning"],
+      "topics": ["AI policy", "Model cards", "Audit trails"]
+    },
+    {
+      "day": 30,
+      "title": "Capstone Architecture Review",
+      "objectives": ["Design a complete AI system from scratch", "Justify architectural decisions"],
+      "topics": ["End-to-end design", "Tradeoff analysis", "Scalability planning"]
+    },
+    {
+      "day": 31,
+      "title": "Production Launch and Handoff",
+      "objectives": ["Ship an AI feature to production", "Create operational runbooks"],
+      "topics": ["Launch checklist", "Runbooks", "On-call setup"]
+    }
+  ]
+}
