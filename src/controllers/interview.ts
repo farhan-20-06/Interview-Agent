@@ -339,6 +339,7 @@ INSTRUCTION: This is the START of the interview. Write a warm, professional open
       temperature: 0.7,
     });
   } catch (err: any) {
+    console.error("[InterviewController] Error starting interview session:", err);
     res.status(503).json({ error: 'The AI Interviewer is temporarily unavailable. Please try resending your answer.' });
     return;
   }
@@ -423,6 +424,7 @@ async function continueInterview(
       temperature: 0.7,
     });
   } catch (err: any) {
+    console.error("[InterviewController] Error continuing interview session:", err);
     res.status(503).json({ error: 'The AI Interviewer is temporarily unavailable. Please try resending your answer.' });
     return;
   }

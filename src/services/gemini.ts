@@ -83,6 +83,10 @@ class OpenRouterServiceImpl implements GeminiService {
     return this.withRetry(async () => {
       const fullPrompt = `${params.systemPrompt}\n\n${params.userContext}\n\nRespond with a JSON object matching this exact schema:\n{\n  "comment": "<a short, natural reaction/comment to the candidate's last response (1-2 sentences), directly addressed to the candidate. Avoid generic robotic phrases. Say things like 'That's a solid explanation. Let's take it one step further.' or 'You're on the right track, but there's a key part we missed.'>",\n  "assessment": {\n    "score": <number 0-10>,\n    "level": "<weak|developing|strong|excellent>",\n    "reason": "<brief explanation>",\n    "quality": "<strong|partial|weak>",\n    "confidence": "<high|medium|low>",\n    "gaps": ["<specific conceptual or practical gaps identified in the answer>"]\n  },\n  "nextAction": "<followup|new_topic|finish>",\n  "nextQuestion": "<next question string or empty string>",\n  "topic": {\n    "day": <number>,\n    "title": "<topic title>"\n  },\n  "feedback": null\n}\n\nIf nextAction is "finish", include feedback:\n{\n  "feedback": {\n    "summary": "<overall summary>",\n    "strengths": ["<strength>"],\n    "gaps": ["<gap>"],\n    "next": ["<recommendation>"]\n  }\n}\n\nReturn ONLY valid JSON. No markdown fences. No extra text.`;
 
+      console.log(`[OpenRouter] Request started`);
+      console.log(`[OpenRouter] Selected model: ${this.model}`);
+      console.log(`[OpenRouter] API key configured: ${Boolean(this.apiKey)}`);
+
       const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -99,8 +103,11 @@ class OpenRouterServiceImpl implements GeminiService {
         })
       });
 
+      console.log(`[OpenRouter] HTTP status: ${response.status}`);
+
       if (!response.ok) {
         const errorText = await response.text();
+        console.error(`[OpenRouter] Error message: ${errorText}`);
         throw new Error(`OpenRouter API error: ${response.status} - ${errorText}`);
       }
 
@@ -122,12 +129,14 @@ class OpenRouterServiceImpl implements GeminiService {
     let parsed: unknown;
     try {
       parsed = JSON.parse(cleaned);
-    } catch {
+    } catch (err: any) {
+      console.error(`[OpenRouter] JSON parsing error: ${err.message}. Raw content: ${cleaned}`);
       throw new Error(`LLM returned invalid JSON: ${cleaned.slice(0, 200)}`);
     }
 
     const result = InterviewDecisionSchema.safeParse(parsed);
     if (!result.success) {
+      console.error(`[OpenRouter] Schema validation error: ${result.error.message}. Cleaned content: ${cleaned}`);
       throw new Error(
         `LLM response failed schema validation: ${result.error.message}`
       );
@@ -165,7 +174,7 @@ export function getGeminiService(): GeminiService {
     if (!apiKey) {
       throw new Error('OPENROUTER_API_KEY is not set in environment variables');
     }
-    const model = process.env.OPENROUTER_MODEL ?? 'mistralai/mistral-7b-instruct:free';
+    const model = process.env.OPENROUTER_MODEL ?? 'google/gemini-2.5-flash';
     instance = new OpenRouterServiceImpl(apiKey, model);
   }
   return instance;

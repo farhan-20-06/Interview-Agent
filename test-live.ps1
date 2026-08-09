@@ -1,4 +1,4 @@
-$body = Get-Content "data\candidates.json" -Raw | ConvertFrom-Json
+$body = Get-Content "data\candidates (1).json" -Raw | ConvertFrom-Json
 $candidate = $body.candidates[0]
 
 $payload = @{
