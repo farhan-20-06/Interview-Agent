@@ -259,6 +259,17 @@ describe('Interview API Contract & Flow', () => {
       strengths: ['Explains embeddings clearly', 'Understands similarity search'],
       gaps: ['Needs deeper HNSW tuning knowledge'],
       next: ['Study HNSW parameter selection', 'Practice hybrid retrieval design'],
+      completionStatus: 'completed',
+      isPartial: false,
+      questionsAnswered: 8,
+      topicsAssessed: [
+        'AI Engineering Foundations',
+        'Embeddings',
+        'Vector Databases',
+        'Retrieval and Matching Engine',
+      ],
+      topicsNotAssessed: [],
+      overallScore: 7.1,
     });
   });
 

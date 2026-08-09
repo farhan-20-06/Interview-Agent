@@ -31,6 +31,22 @@ INTERVIEWING METHODOLOGY:
    - Set nextAction to "finish" only when allowed by the controller context.
 `;
 
+export const ASSESSMENT_SYSTEM_PROMPT = `You are an elite technical assessor. Your job is to generate a comprehensive, highly accurate, and customized technical assessment of the candidate based strictly on the answers they submitted.
+
+CRITICAL ASSESSMENT RULES:
+1. ALWAYS EVALUATE ALL SUBMITTED ANSWERS: You must evaluate every candidate answer that is available, even when the interview ended before completion. Do not treat unanswered questions as incorrect answers. Evaluate only the evidence contained in the candidate's submitted answers. If the interview is incomplete, clearly state that the assessment is partial and identify the topics that were not assessed.
+2. PARTIAL INTERVIEW ASSESSMENT:
+   - Analyze every submitted answer.
+   - Give feedback on technical correctness.
+   - Evaluate depth of understanding, clarity, and confidence/communication based only on the actual answers.
+   - Identify strengths demonstrated in the answered topics.
+   - Identify weaknesses or areas where answers were incomplete.
+   - Mention which topics were covered.
+   - Do not penalize the candidate as if unanswered questions were wrong.
+3. NO GENERIC OR PLACEHOLDER FEEDBACK: Never use generic placeholder feedback like "Participated in the interview." or "Insufficient questions answered for a complete assessment."
+4. DYNAMIC ANALYSIS: Do not hard-code or generate generic feedback. The assessment must dynamically analyze the candidate's actual answers. For example, if they give strong answers about HNSW, IVF, embeddings, RRF, and prompt injection, specifically mention those topics and explain what they did well. If an answer is weak, incomplete, unclear, or technically incorrect, identify that specific issue.
+`;
+
 // ─── Context Formatter ────────────────────────────────────────────────────────
 
 interface CandidateSummary {
@@ -205,7 +221,11 @@ Your feedback MUST include:
 - number of questions asked (${questionCount + 1})
 
 Put the overall assessment, concepts demonstrated, misconceptions, evidence, curriculum coverage, interview mode, and number of questions asked in the "summary" string (you may format it with markdown).
-${completedDaysCount < 4 ? 'IMPORTANT: Since this is a limited-progress candidate, you MUST explicitly include the following phrase in the summary: "Assessment was based on the curriculum completed by this candidate." Do NOT claim that 4 curriculum days were assessed.' : ''}`;
+${completedDaysCount < 4 ? 'IMPORTANT: Since this is a limited-progress candidate, you MUST explicitly include the following phrase in the summary: "Assessment was based on the curriculum completed by this candidate." Do NOT claim that 4 curriculum days were assessed.' : ''}
+
+ASSESSMENT RULES (always apply when producing feedback):
+You must evaluate every candidate answer that is available, even when the interview ended before completion. Do not treat unanswered questions as incorrect answers. Evaluate only the evidence contained in the candidate's submitted answers. If the interview is incomplete, clearly state that the assessment is partial and identify the topics that were not assessed.
+Never use generic placeholder feedback such as "Participated in the interview" or "Insufficient questions answered for a complete assessment."`;
   }
 
   return `INTERVIEW MODE: ${modeStr} (${modeDesc})
@@ -241,4 +261,84 @@ RECENT CONVERSATION HISTORY (last ${recentHistory.length} turns):
 ${historyLines || 'No history yet — this is the first question.'}
 ${lastTurn ? `\nLAST ASSESSMENT: ${lastTurn.assessment.level} — ${lastTurn.assessment.reason}` : ''}
 ${finishInstruction}`;
+}
+
+// ─── End-interview / partial assessment context ───────────────────────────────
+
+export function buildEndInterviewAssessmentContext(params: {
+  candidate: CandidateSummary;
+  eligibleTopics: SelectedInterviewTopic[];
+  history: ConversationTurn[];
+  coveredDays: number[];
+  endReason: 'candidate_ended' | 'error';
+  topicsAssessed: string[];
+  topicsNotAssessed: string[];
+}): string {
+  const {
+    candidate,
+    eligibleTopics,
+    history,
+    coveredDays,
+    endReason,
+    topicsAssessed,
+    topicsNotAssessed,
+  } = params;
+
+  const answeredCount = history.length;
+  const endReasonLabel =
+    endReason === 'error'
+      ? 'Interview ended because of an error'
+      : 'Interview ended early by the candidate';
+
+  const allTurns = history
+    .map(
+      (turn) =>
+        `Q${turn.questionNumber}: [Day ${turn.topicDay} — ${turn.topicTitle}]\nInterviewer: ${turn.question}\nCandidate: ${turn.answer}\nPer-answer assessment: ${turn.assessment.level} (score: ${turn.assessment.score}/10) — ${turn.assessment.reason}`
+    )
+    .join('\n\n');
+
+  const eligibleSummary = eligibleTopics
+    .map((t) => `- Day ${t.day}: ${t.title}`)
+    .join('\n');
+
+  return `INTERVIEW END ASSESSMENT REQUEST
+
+STATUS: ${endReasonLabel} after ${answeredCount} submitted answer(s).
+This is a PARTIAL interview assessment. The candidate did not complete the full interview.
+
+CRITICAL ASSESSMENT RULES:
+You must evaluate every candidate answer that is available, even when the interview ended before completion. Do not treat unanswered questions as incorrect answers. Evaluate only the evidence contained in the candidate's submitted answers. If the interview is incomplete, clearly state that the assessment is partial and identify the topics that were not assessed.
+
+- Evaluate ALL ${answeredCount} submitted answers below for technical correctness, depth, clarity, and communication/confidence.
+- Base strengths and weaknesses ONLY on those answers.
+- Mention specific topics and concepts demonstrated (e.g. embeddings, HNSW, IVF, RRF, prompt engineering) when evidence exists.
+- Do NOT invent performance on topics that were not answered.
+- Do NOT use generic placeholders like "Participated in the interview." or "Insufficient questions answered for a complete assessment."
+- In the summary, state clearly that this is a partial assessment based on ${answeredCount} answered question(s), that the interview ended early, and that it does not represent performance on the remaining curriculum.
+- Score only from answered questions — never score unanswered questions as zero.
+
+CANDIDATE:
+Role: ${candidate.role}
+Experience: ${candidate.experience}
+
+ELIGIBLE INTERVIEW TOPICS:
+${eligibleSummary}
+
+TOPICS ASSESSED (from submitted answers):
+${topicsAssessed.length ? topicsAssessed.map((t) => `- ${t}`).join('\n') : '- (none)'}
+
+TOPICS NOT ASSESSED:
+${topicsNotAssessed.length ? topicsNotAssessed.map((t) => `- ${t}`).join('\n') : '- (none — all eligible topics touched)'}
+
+COVERED CURRICULUM DAYS: ${coveredDays.length ? coveredDays.join(', ') : 'None'}
+
+ALL SUBMITTED Q&A (evaluate every one):
+${allTurns || '(No answers submitted)'}
+
+INSTRUCTION: Set nextAction to "finish". Provide detailed personalized feedback in the feedback object:
+- summary: overall partial assessment (must mention early end and ${answeredCount} answers)
+- strengths: technical strengths evidenced in the answers (empty array only if truly none)
+- gaps: weaknesses or incomplete answers among what was submitted (do not list unanswered topics as wrong answers)
+- next: recommended next steps
+Also include in the summary: topics covered and that remaining curriculum was not assessed.`;
 }

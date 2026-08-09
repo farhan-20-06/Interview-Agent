@@ -1003,6 +1003,46 @@ body {
   letter-spacing: 0.05em;
 }
 
+.completed-badge.partial {
+  color: #b45309;
+  background: #fffbeb;
+  border-color: #fcd34d;
+}
+
+.completed-badge.error-status {
+  color: #b91c1c;
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.completed-badge.no-answers {
+  color: var(--text-muted);
+  background: var(--surface-2, #f4f4f5);
+  border-color: var(--border);
+}
+
+.feedback-status-banner {
+  padding: 14px 18px;
+  border-radius: var(--radius-md);
+  border: 1px solid #fcd34d;
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 0.9125rem;
+  line-height: 1.55;
+}
+
+.feedback-status-banner.error-banner {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.feedback-status-banner.complete-banner {
+  border-color: var(--success-border);
+  background: var(--success-bg);
+  color: var(--success);
+}
+
 .feedback-title {
   font-size: 1.375rem;
   font-weight: 700;

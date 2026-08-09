@@ -224,12 +224,17 @@
 
         <!-- Page header -->
         <div class="feedback-header">
-          <div class="completed-badge">
+          <div class="completed-badge" id="feedbackStatusBadge">
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-            Interview Completed
+            <span id="feedbackStatusBadgeText">Interview Completed</span>
           </div>
           <h1 class="feedback-title">Technical Interview Assessment</h1>
           <p class="feedback-subtitle" id="feedbackCandidateMeta">Assessment results for candidate</p>
+        </div>
+
+        <!-- Partial / status callout -->
+        <div class="feedback-status-banner hidden" id="feedbackStatusBanner">
+          <p id="feedbackStatusBannerText"></p>
         </div>
 
         <!-- Candidate info bar -->
@@ -281,6 +286,26 @@
 
         </div>
 
+        <!-- Topics Assessed / Not Assessed -->
+        <div class="feedback-grid">
+          <div class="feedback-card curriculum-card">
+            <div class="card-title-row">
+              <h3>Topics Assessed</h3>
+            </div>
+            <p class="curriculum-note">Topics covered by the candidate's submitted answers.</p>
+            <ul id="feedbackTopicsAssessedList" class="feedback-list coverage-bullets">
+            </ul>
+          </div>
+          <div class="feedback-card curriculum-card">
+            <div class="card-title-row">
+              <h3>Topics Not Assessed</h3>
+            </div>
+            <p class="curriculum-note">Eligible topics that were not answered in this session.</p>
+            <ul id="feedbackTopicsNotAssessedList" class="feedback-list coverage-bullets">
+            </ul>
+          </div>
+        </div>
+
         <!-- Recommended Next Steps -->
         <div class="feedback-card next-steps-card">
           <div class="card-title-row">
@@ -290,12 +315,12 @@
           </ul>
         </div>
 
-        <!-- Curriculum Coverage -->
+        <!-- Curriculum Coverage (legacy list kept for full context) -->
         <div class="feedback-card curriculum-card">
           <div class="card-title-row">
             <h3>Curriculum Coverage</h3>
           </div>
-          <p class="curriculum-note">Topics assessed during this interview session, based on your cohort progress.</p>
+          <p class="curriculum-note">Eligible interview topics for this candidate based on cohort progress.</p>
           <ul id="feedbackCurriculumList" class="feedback-list coverage-bullets">
           </ul>
         </div>

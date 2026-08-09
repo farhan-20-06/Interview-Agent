@@ -7,6 +7,9 @@ import {
   updateSession,
   recordTurn,
   adjustDifficulty,
+  averageAnsweredScore,
+  getTopicsAssessed,
+  getTopicsNotAssessed,
   ConversationTurn,
   InterviewSession,
 } from '../services/session.js';
@@ -15,9 +18,18 @@ import {
   SelectedInterviewTopic,
 } from '../services/candidate-intelligence.js';
 import { getCurriculumData } from '../services/candidate-data.js';
-import { INTERVIEWER_SYSTEM_PROMPT, buildInterviewContext } from '../prompts/interviewer.js';
+import {
+  INTERVIEWER_SYSTEM_PROMPT,
+  ASSESSMENT_SYSTEM_PROMPT,
+  buildInterviewContext,
+  buildEndInterviewAssessmentContext,
+} from '../prompts/interviewer.js';
 import { CandidateSchema, Candidate, getMissionStatus } from '../types/candidate.js';
-import { InterviewDecision } from '../types/interview.js';
+import {
+  CompletionStatus,
+  InterviewDecision,
+  InterviewFeedback,
+} from '../types/interview.js';
 
 // ─── Hard Constraints ─────────────────────────────────────────────────────────
 
@@ -36,13 +48,19 @@ const ContinueInterviewSchema = z.object({
   message: z.string().min(1, 'message is required'),
 });
 
+const EndInterviewSchema = z.object({
+  sessionId: z.string().min(1, 'sessionId is required'),
+  endInterview: z.literal(true),
+  reason: z.enum(['candidate_ended', 'error']).optional().default('candidate_ended'),
+});
+
 // ─── Response Helpers ─────────────────────────────────────────────────────────
 
 function replyOngoing(reply: string) {
   return { reply, done: false };
 }
 
-function replyFinished(reply: string, feedback: object) {
+function replyFinished(reply: string, feedback: InterviewFeedback) {
   return { reply, done: true, feedback };
 }
 
@@ -96,6 +114,114 @@ function buildTopicLists(candidate: Candidate) {
     });
 
   return { completedTopics, failedTopics, skippedTopics, perTopicSignals };
+}
+
+// ─── Feedback enrichment ──────────────────────────────────────────────────────
+
+export function enrichFeedback(
+  feedback: InterviewFeedback,
+  session: InterviewSession,
+  completionStatus: CompletionStatus
+): InterviewFeedback {
+  const questionsAnswered = session.conversationHistory.length;
+  const topicsAssessed = getTopicsAssessed(session);
+  const topicsNotAssessed = getTopicsNotAssessed(session);
+  const overallScore = averageAnsweredScore(session);
+  const isPartial =
+    completionStatus === 'ended_early' ||
+    completionStatus === 'no_answers' ||
+    completionStatus === 'error';
+
+  return {
+    ...feedback,
+    completionStatus,
+    isPartial,
+    questionsAnswered,
+    topicsAssessed: feedback.topicsAssessed?.length ? feedback.topicsAssessed : topicsAssessed,
+    topicsNotAssessed: feedback.topicsNotAssessed?.length
+      ? feedback.topicsNotAssessed
+      : topicsNotAssessed,
+    // Only attach a numeric score when answers exist; never invent zeros for unanswered.
+    overallScore: questionsAnswered > 0 ? (feedback.overallScore ?? overallScore) : null,
+  };
+}
+
+/** Deterministic no-answer feedback — never fabricates strengths. */
+export function buildNoAnswersFeedback(
+  reason: 'candidate_ended' | 'error'
+): InterviewFeedback {
+  const statusLine =
+    reason === 'error'
+      ? 'Interview ended because of an error before any answers were submitted.'
+      : 'Interview ended early by the candidate before any answers were submitted.';
+
+  return {
+    summary: `${statusLine} No answers were submitted, so a meaningful technical assessment could not be generated.`,
+    strengths: [],
+    gaps: [],
+    next: ['Restart the interview and answer at least one question to receive a technical assessment.'],
+    completionStatus: 'no_answers',
+    isPartial: true,
+    questionsAnswered: 0,
+    topicsAssessed: [],
+    topicsNotAssessed: [],
+    overallScore: null,
+  };
+}
+
+/**
+ * Fallback partial feedback from per-turn assessments when the LLM is unavailable.
+ * Still evaluates every submitted answer — never uses generic placeholders.
+ */
+export function buildFallbackPartialFeedback(
+  session: InterviewSession,
+  reason: 'candidate_ended' | 'error'
+): InterviewFeedback {
+  const n = session.conversationHistory.length;
+  if (n === 0) return buildNoAnswersFeedback(reason);
+
+  const topicsAssessed = getTopicsAssessed(session);
+  const topicsNotAssessed = getTopicsNotAssessed(session);
+  const avg = averageAnsweredScore(session);
+
+  const endLine =
+    reason === 'error'
+      ? `Interview ended because of an error after ${n} question${n === 1 ? '' : 's'}.`
+      : `Interview was ended early by the candidate after ${n} question${n === 1 ? '' : 's'}.`;
+
+  const strengths = session.conversationHistory
+    .filter((t) => t.assessment.level === 'strong' || t.assessment.level === 'excellent')
+    .map((t) => `${t.topicTitle}: ${t.assessment.reason}`);
+
+  const gaps = session.conversationHistory
+    .filter((t) => t.assessment.level === 'weak' || t.assessment.level === 'developing')
+    .map((t) => `${t.topicTitle}: ${t.assessment.reason}`);
+
+  const topicList = topicsAssessed.join(', ') || 'the topics discussed';
+
+  return {
+    summary: `${endLine} Partial assessment based on ${n} answered question${n === 1 ? '' : 's'}. Based on the answers provided, the candidate was assessed on ${topicList}. The assessment is based only on the questions answered and does not represent performance on the remaining curriculum.`,
+    strengths:
+      strengths.length > 0
+        ? strengths
+        : session.conversationHistory.map(
+            (t) => `Answered on ${t.topicTitle} (score ${t.assessment.score}/10): ${t.assessment.reason}`
+          ),
+    gaps:
+      gaps.length > 0
+        ? gaps
+        : ['No major weaknesses were flagged in the per-answer assessments for the questions answered.'],
+    next: [
+      'Complete a full interview session to cover remaining eligible topics.',
+      ...(topicsNotAssessed.slice(0, 3).map((t) => `Review: ${t}`)),
+    ],
+    completionStatus: reason === 'error' ? 'error' : 'ended_early',
+    isPartial: true,
+    questionsAnswered: n,
+    topicsAssessed,
+    topicsNotAssessed,
+    overallScore: avg,
+  };
 }
 
 // ─── Constraint enforcement ───────────────────────────────────────────────────
@@ -246,7 +372,7 @@ async function continueInterview(
   }
 
   if (session.completed) {
-    res.status(410).json({ error: 'Interview is already completed', done: true });
+    res.status(410).json({ error: 'Interview is already completed', done: true, feedback: session.feedback });
     return;
   }
 
@@ -302,6 +428,7 @@ async function continueInterview(
   }
 
   // ─── Record the completed turn ────────────────────────────────────────────
+  // Answers are recorded BEFORE finish handling so they are never discarded.
 
   const questionJustAnswered = session.lastShownQuestion ?? `Tell me about ${currentTopic.title}.`;
 
@@ -338,6 +465,40 @@ async function continueInterview(
   const questionPart = finalDecision.nextQuestion ? finalDecision.nextQuestion.trim() : '';
   const combinedReply = comment && questionPart ? `${comment}\n\n${questionPart}` : (comment || questionPart);
 
+  // ─── Return response ───────────────────────────────────────────────────────
+
+  if (finalDecision.nextAction === 'finish') {
+    const baseFeedback = finalDecision.feedback ?? {
+      summary: 'Interview completed.',
+      strengths: [],
+      gaps: [],
+      next: [],
+    };
+    const feedback = enrichFeedback(baseFeedback, session, 'completed');
+
+    updateSession(sessionId, {
+      questionCount: newQuestionCount,
+      coveredDays: newCoveredDays,
+      currentDay: nextTopic.day,
+      currentTopic: nextTopic,
+      conversationHistory: session.conversationHistory,
+      topicScores: session.topicScores,
+      difficulty: newDifficulty,
+      completed: true,
+      completionStatus: 'completed',
+      endReason: 'completed_normally',
+      feedback,
+      lastShownQuestion: combinedReply,
+      endedAt: new Date().toISOString(),
+    });
+
+    const closingMessage =
+      combinedReply || "That concludes our interview. Thank you for your time.";
+
+    res.status(200).json(replyFinished(closingMessage, feedback));
+    return;
+  }
+
   updateSession(sessionId, {
     questionCount: newQuestionCount,
     coveredDays: newCoveredDays,
@@ -346,27 +507,10 @@ async function continueInterview(
     conversationHistory: session.conversationHistory,
     topicScores: session.topicScores,
     difficulty: newDifficulty,
-    completed: finalDecision.nextAction === 'finish',
-    feedback: finalDecision.feedback ?? null,
+    completed: false,
+    feedback: null,
     lastShownQuestion: combinedReply,
   });
-
-  // ─── Return response ───────────────────────────────────────────────────────
-
-  if (finalDecision.nextAction === 'finish') {
-    const feedback = finalDecision.feedback ?? {
-      summary: 'Interview completed.',
-      strengths: [],
-      gaps: [],
-      next: [],
-    };
-
-    const closingMessage =
-      combinedReply || "That concludes our interview. Thank you for your time.";
-
-    res.status(200).json(replyFinished(closingMessage, feedback));
-    return;
-  }
 
   if (!combinedReply) {
     res.status(503).json({ error: 'The AI Interviewer failed to formulate the next question. Please try resending your answer.' });
@@ -376,6 +520,120 @@ async function continueInterview(
   res.status(200).json(replyOngoing(combinedReply));
 }
 
+// ─── End Interview Early (preserve answers, generate partial assessment) ──────
+
+async function endInterviewEarly(
+  sessionId: string,
+  reason: 'candidate_ended' | 'error',
+  res: Response
+): Promise<void> {
+  const session = getSession(sessionId);
+  if (!session) {
+    res.status(404).json({ error: `Session not found: ${sessionId}` });
+    return;
+  }
+
+  // If already completed, return preserved feedback — do not clear answers.
+  if (session.completed && session.feedback) {
+    res.status(200).json(
+      replyFinished(
+        'Interview already concluded. Showing the existing assessment.',
+        session.feedback
+      )
+    );
+    return;
+  }
+
+  const answeredCount = session.conversationHistory.length;
+
+  // Zero answers — no LLM call, no fabricated strengths
+  if (answeredCount === 0) {
+    const feedback = enrichFeedback(buildNoAnswersFeedback(reason), session, 'no_answers');
+    updateSession(sessionId, {
+      completed: true,
+      completionStatus: 'no_answers',
+      endReason: reason,
+      feedback,
+      endedAt: new Date().toISOString(),
+      // Preserve conversationHistory explicitly (empty, but not wiped)
+      conversationHistory: session.conversationHistory,
+    });
+    res.status(200).json(
+      replyFinished(
+        'The interview ended before any answers were submitted.',
+        feedback
+      )
+    );
+    return;
+  }
+
+  const topicsAssessed = getTopicsAssessed(session);
+  const topicsNotAssessed = getTopicsNotAssessed(session);
+  const completedDaysCount = countCompletedOrFailedDays(session.candidate);
+  const { completedTopics, failedTopics, skippedTopics, perTopicSignals } = buildTopicLists(
+    session.candidate
+  );
+
+  const context = buildEndInterviewAssessmentContext({
+    candidate: {
+      role: session.candidate.member.jobRole,
+      experience: `${session.candidate.member.yearsExperience} years`,
+      completedDaysCount,
+      completedTopics,
+      failedTopics,
+      skippedTopics,
+      perTopicSignals,
+    },
+    eligibleTopics: session.eligibleTopics,
+    history: session.conversationHistory,
+    coveredDays: session.coveredDays,
+    endReason: reason,
+    topicsAssessed,
+    topicsNotAssessed,
+  });
+
+  const completionStatus: CompletionStatus = reason === 'error' ? 'error' : 'ended_early';
+
+  let feedback: InterviewFeedback;
+  try {
+    const gemini = getGeminiService();
+    const decision = await gemini.generateInterviewDecision({
+      systemPrompt: ASSESSMENT_SYSTEM_PROMPT,
+      userContext: context,
+      temperature: 0.5,
+    });
+
+    const base =
+      decision.feedback ??
+      buildFallbackPartialFeedback(session, reason);
+
+    feedback = enrichFeedback(base, session, completionStatus);
+  } catch {
+    // Preserve answers and still produce a meaningful assessment from turn data
+    feedback = enrichFeedback(buildFallbackPartialFeedback(session, reason), session, completionStatus);
+  }
+
+  updateSession(sessionId, {
+    completed: true,
+    completionStatus,
+    endReason: reason,
+    feedback,
+    endedAt: new Date().toISOString(),
+    // Explicitly preserve all submitted answers
+    conversationHistory: session.conversationHistory,
+    questionCount: session.questionCount,
+    topicScores: session.topicScores,
+    coveredDays: session.coveredDays,
+  });
+
+  const closing =
+    reason === 'error'
+      ? `The interview ended due to an error after ${answeredCount} answered question${answeredCount === 1 ? '' : 's'}. A partial assessment has been generated from your submitted answers.`
+      : `Interview ended early after ${answeredCount} answered question${answeredCount === 1 ? '' : 's'}. A partial assessment has been generated from your submitted answers.`;
+
+  res.status(200).json(replyFinished(closing, feedback));
+}
+
 // ─── Main Route Handler ───────────────────────────────────────────────────────
 
 export async function interviewHandler(req: Request, res: Response): Promise<void> {
@@ -383,6 +641,16 @@ export async function interviewHandler(req: Request, res: Response): Promise<voi
 
   if (!body || typeof body !== 'object') {
     res.status(400).json({ error: 'Request body must be a JSON object' });
+    return;
+  }
+
+  if (body.endInterview === true) {
+    const parsed = EndInterviewSchema.safeParse(body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.issues[0]?.message ?? 'Invalid request' });
+      return;
+    }
+    await endInterviewEarly(parsed.data.sessionId, parsed.data.reason, res);
     return;
   }
 

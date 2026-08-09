@@ -32,8 +32,20 @@ export const InterviewDecisionSchema = z.object({
 
 export type InterviewTopic = z.infer<typeof InterviewTopicSchema>;
 export type InterviewAssessment = z.infer<typeof InterviewAssessmentSchema>;
-export type InterviewFeedback = z.infer<typeof InterviewFeedbackSchema>;
 export type InterviewDecision = z.infer<typeof InterviewDecisionSchema>;
+
+export type CompletionStatus = 'completed' | 'ended_early' | 'no_answers' | 'error';
+
+/** API feedback payload — base fields from LLM plus server-enriched metadata. */
+export type InterviewFeedback = z.infer<typeof InterviewFeedbackSchema> & {
+  completionStatus?: CompletionStatus;
+  isPartial?: boolean;
+  questionsAnswered?: number;
+  topicsAssessed?: string[];
+  topicsNotAssessed?: string[];
+  /** Average score across answered questions only; null when no answers exist. */
+  overallScore?: number | null;
+};
 
 export interface GeminiGenerationOptions {
   temperature?: number;
