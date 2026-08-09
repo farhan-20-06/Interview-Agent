@@ -344,8 +344,15 @@ INSTRUCTION: This is the START of the interview. Write a warm, professional open
     return;
   }
 
-  const openingQuestion = decision.nextQuestion ?? '';
-  if (!openingQuestion) {
+  // Combine comment and nextQuestion for the opening, mirroring continueInterview logic.
+  const openingComment = decision.comment ? decision.comment.trim() : '';
+  const openingQuestionPart = decision.nextQuestion ? decision.nextQuestion.trim() : '';
+  const openingReply = openingComment && openingQuestionPart
+    ? `${openingComment}\n\n${openingQuestionPart}`
+    : (openingComment || openingQuestionPart);
+
+  if (!openingReply) {
+    console.error('[InterviewController] LLM returned empty comment and nextQuestion on start');
     res.status(503).json({ error: 'The AI Interviewer failed to initialize. Please restart the interview.' });
     return;
   }
@@ -353,10 +360,10 @@ INSTRUCTION: This is the START of the interview. Write a warm, professional open
   updateSession(session.sessionId, {
     currentDay: firstTopic.day,
     currentTopic: firstTopic,
-    lastShownQuestion: openingQuestion,
+    lastShownQuestion: openingReply,
   });
 
-  res.status(200).json(replyOngoing(openingQuestion));
+  res.status(200).json(replyOngoing(openingReply));
 }
 
 // ─── Continue Interview ───────────────────────────────────────────────────────
