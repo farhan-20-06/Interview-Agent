@@ -9,6 +9,9 @@ export const InterviewAssessmentSchema = z.object({
   score: z.number().describe("A score between 0 and 10 based on the candidate's answer."),
   level: z.enum(['weak', 'developing', 'strong', 'excellent']),
   reason: z.string().describe("A brief explanation for the given score and level."),
+  quality: z.enum(['strong', 'partial', 'weak']).optional().describe("Quality of the candidate's answer."),
+  confidence: z.enum(['high', 'medium', 'low']).optional().describe("Confidence level of the candidate's answer."),
+  gaps: z.array(z.string()).optional().describe("Key conceptual or practical gaps identified in this answer."),
 });
 
 export const InterviewFeedbackSchema = z.object({
@@ -19,6 +22,7 @@ export const InterviewFeedbackSchema = z.object({
 });
 
 export const InterviewDecisionSchema = z.object({
+  comment: z.string().optional().describe("A short, natural reaction comment to the candidate's last response (1-2 sentences), directly addressed to the candidate."),
   assessment: InterviewAssessmentSchema,
   nextAction: z.enum(['followup', 'new_topic', 'finish']),
   nextQuestion: z.string().nullable().describe("The next question to ask, if action is not finish."),

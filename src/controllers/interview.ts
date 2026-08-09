@@ -332,7 +332,11 @@ async function continueInterview(
   // ─── Adjust difficulty based on assessment ─────────────────────────────────
 
   const newDifficulty = adjustDifficulty(session.difficulty, decision.assessment.level);
-  const nextQuestion = finalDecision.nextQuestion ?? '';
+
+  // Combine comment and nextQuestion for presentation
+  const comment = finalDecision.comment ? finalDecision.comment.trim() : '';
+  const questionPart = finalDecision.nextQuestion ? finalDecision.nextQuestion.trim() : '';
+  const combinedReply = comment && questionPart ? `${comment}\n\n${questionPart}` : (comment || questionPart);
 
   updateSession(sessionId, {
     questionCount: newQuestionCount,
@@ -344,7 +348,7 @@ async function continueInterview(
     difficulty: newDifficulty,
     completed: finalDecision.nextAction === 'finish',
     feedback: finalDecision.feedback ?? null,
-    lastShownQuestion: nextQuestion,
+    lastShownQuestion: combinedReply,
   });
 
   // ─── Return response ───────────────────────────────────────────────────────
@@ -358,18 +362,18 @@ async function continueInterview(
     };
 
     const closingMessage =
-      nextQuestion || "That concludes our interview. Thank you for your time. Here's your feedback:";
+      combinedReply || "That concludes our interview. Thank you for your time.";
 
     res.status(200).json(replyFinished(closingMessage, feedback));
     return;
   }
 
-  if (!nextQuestion) {
+  if (!combinedReply) {
     res.status(503).json({ error: 'The AI Interviewer failed to formulate the next question. Please try resending your answer.' });
     return;
   }
 
-  res.status(200).json(replyOngoing(nextQuestion));
+  res.status(200).json(replyOngoing(combinedReply));
 }
 
 // ─── Main Route Handler ───────────────────────────────────────────────────────

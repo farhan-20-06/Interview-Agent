@@ -1,9 +1,9 @@
 import fs from 'fs';
 import path from 'path';
 
-const candDataPath = path.resolve(process.cwd(), 'data/candidates.json');
+const candDataPath = path.resolve(process.cwd(), 'data/candidates (1).json');
 const candidates = JSON.parse(fs.readFileSync(candDataPath, 'utf8')).candidates;
-const cand001 = candidates.find((c: any) => c.id === 'cand-001');
+const cand001 = candidates.find((c: any) => c.member.id === 'CAND-001');
 
 const API_URL = 'http://localhost:3000/api/interview';
 

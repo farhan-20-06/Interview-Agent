@@ -44,22 +44,22 @@ describe('Frontend Static Serving & Candidates Endpoint', () => {
     const res = await fetch(`${baseUrl}/`);
     expect(res.status).toBe(200);
     const text = await res.text();
-    expect(text).toContain('AI Technical Interview Agent');
-    expect(text).toContain('Practice Technical Interviews');
+    expect(text).toContain('AI Interview');
+    expect(text).toContain('Technical Assessment');
   });
 
   it('serves static styles.css', async () => {
     const res = await fetch(`${baseUrl}/styles.css`);
     expect(res.status).toBe(200);
     const text = await res.text();
-    expect(text).toContain('--bg-dark');
+    expect(text).toContain('--navy');
   });
 
   it('serves static app.js', async () => {
     const res = await fetch(`${baseUrl}/app.js`);
     expect(res.status).toBe(200);
     const text = await res.text();
-    expect(text).toContain('AI Technical Interview Agent');
+    expect(text).toContain('SPA Client Application Logic');
   });
 
   it('returns candidate profiles via GET /api/candidates', async () => {
