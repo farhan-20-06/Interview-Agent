@@ -418,11 +418,13 @@ async function continueInterview(
   const gemini = getGeminiService();
   let decision: InterviewDecision;
   try {
+    console.log('[Interview] generating next question for session');
     decision = await gemini.generateInterviewDecision({
       systemPrompt: INTERVIEWER_SYSTEM_PROMPT,
       userContext: context,
       temperature: 0.7,
     });
+    console.log('[Interview] next question generated:', Boolean(decision?.nextQuestion));
   } catch (err: any) {
     console.error("[InterviewController] Error continuing interview session:", err);
     res.status(503).json({ error: 'The AI Interviewer is temporarily unavailable. Please try resending your answer.' });
@@ -664,6 +666,8 @@ export async function interviewHandler(req: Request, res: Response): Promise<voi
       res.status(400).json({ error: parsed.error.issues[0]?.message ?? 'Invalid request' });
       return;
     }
+    console.log('[Interview] continuing session:', Boolean(parsed.data.sessionId));
+    console.log('[Interview] answer received:', Boolean(parsed.data.message));
     await continueInterview(parsed.data.sessionId, parsed.data.message, res);
     return;
   } else {
