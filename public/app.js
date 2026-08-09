@@ -50,11 +50,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Feedback DOM
   const feedbackCandidateMeta = document.getElementById('feedbackCandidateMeta');
+  const feedbackMetaName = document.getElementById('feedbackMetaName');
+  const feedbackMetaRole = document.getElementById('feedbackMetaRole');
+  const feedbackMetaQuestions = document.getElementById('feedbackMetaQuestions');
   const feedbackSummaryText = document.getElementById('feedbackSummaryText');
   const feedbackStrengthsList = document.getElementById('feedbackStrengthsList');
   const feedbackGapsList = document.getElementById('feedbackGapsList');
   const feedbackNextList = document.getElementById('feedbackNextList');
   const btnRestart = document.getElementById('btnRestart');
+
+  // Interview header progress badge
+  const interviewProgressBadge = document.getElementById('interviewProgressBadge');
 
   // ─── Navigation ────────────────────────────────────────────────────────────
   function showScreen(screenKey) {
@@ -109,9 +115,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function renderCandidateCards() {
     candidateGrid.innerHTML = '';
-    
+
     if (state.candidates.length === 0) {
-      candidateGrid.innerHTML = '<p class="text-muted">No candidate profiles found.</p>';
+      candidateGrid.innerHTML = '<p style="padding: 24px; color: var(--text-muted); font-size: 0.875rem;">No candidate profiles found.</p>';
       return;
     }
 
@@ -121,31 +127,38 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const name = cand.member?.name || 'Unknown';
       const role = cand.member?.jobRole || 'Unknown Role';
-      const exp = cand.member?.yearsExperience !== undefined ? `${cand.member.yearsExperience} years` : 'Unknown';
-      const education = cand.member?.education || '';
+      const expYears = cand.member?.yearsExperience;
+      const expText = expYears !== undefined ? `${expYears} yr${expYears !== 1 ? 's' : ''}` : '—';
+      const education = cand.member?.education || 'AI Cohort';
+
+      // Count non-skipped missions for learning progress
+      const missions = cand.missions || [];
+      const completedMissions = missions.filter(m => !m.skipped).length;
+      const totalMissions = missions.length;
+      const progressText = totalMissions > 0
+        ? `${completedMissions} of ${totalMissions} modules`
+        : 'Cohort member';
 
       card.innerHTML = `
-        <div class="candidate-card-header">
-          <div class="avatar-medium">${getInitials(name)}</div>
-          <div class="candidate-info">
-            <h3>${escapeHtml(name)}</h3>
-            <span class="role-badge">${escapeHtml(role)}</span>
-          </div>
+        <div class="avatar-medium">${getInitials(name)}</div>
+        <div class="candidate-info">
+          <h3>${escapeHtml(name)}</h3>
+          <span class="role-badge">${escapeHtml(role)}</span>
         </div>
-
-        <div class="candidate-details">
-          <div class="detail-row">
-            <span class="detail-label">Experience:</span>
-            <span class="detail-value">${escapeHtml(exp)}</span>
-          </div>
-          <div class="detail-row">
-            <span class="detail-label">Education:</span>
-            <span class="detail-value">${escapeHtml(education || 'Enterprise AI Cohort')}</span>
-          </div>
+        <div class="detail-row">
+          <span class="detail-label">Experience</span>
+          <span class="detail-value">${escapeHtml(expText)}</span>
         </div>
-
-        <button class="btn btn-primary btn-select-candidate" style="width: 100%;">
-          <span>Select &amp; Begin Interview</span>
+        <div class="detail-row">
+          <span class="detail-label">Education</span>
+          <span class="detail-value">${escapeHtml(education)}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Progress</span>
+          <span class="detail-value">${escapeHtml(progressText)}</span>
+        </div>
+        <button class="btn btn-primary btn-sm btn-select-candidate">
+          Begin Interview
         </button>
       `;
 
@@ -211,17 +224,24 @@ document.addEventListener('DOMContentLoaded', () => {
     const cand = state.selectedCandidate;
     const name = cand.member?.name || 'Unknown';
     const role = cand.member?.jobRole || 'Unknown Role';
-    const exp = cand.member?.yearsExperience !== undefined ? `${cand.member.yearsExperience} years` : 'Unknown';
+    const expYears = cand.member?.yearsExperience;
+    const expText = expYears !== undefined ? `${expYears} yr${expYears !== 1 ? 's' : ''}` : '';
 
     sidebarAvatar.textContent = getInitials(name);
     sidebarCandidateName.textContent = name;
     sidebarCandidateRole.textContent = role;
-    sidebarCandidateExp.textContent = `${exp} experience`;
+    sidebarCandidateExp.textContent = expText ? `${expText} experience` : '';
+
+    // Populate interview header with candidate context
+    const headerName = document.getElementById('interviewHeaderCandidateName');
+    const headerMeta = document.getElementById('interviewHeaderCandidateMeta');
+    if (headerName) headerName.textContent = name;
+    if (headerMeta) headerMeta.textContent = expText ? `${role} · ${expText} experience` : role;
 
     chatHistory.innerHTML = '';
     chatErrorBanner.classList.add('hidden');
     answerInput.value = '';
-    
+
     if (answerInputArea) answerInputArea.classList.remove('hidden');
     if (viewResultsArea) viewResultsArea.classList.add('hidden');
 
@@ -230,7 +250,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function updateProgressUI() {
     const qCount = state.questionCount;
-    questionProgressText.textContent = `Question ${qCount}`;
+    // Sidebar progress counter
+    questionProgressText.textContent = qCount > 0 ? `Question ${qCount}` : 'Starting…';
+    // Header badge — show only question count, not internal constraints
+    if (interviewProgressBadge) {
+      interviewProgressBadge.textContent = qCount > 0 ? `Question ${qCount}` : 'Starting';
+    }
 
     renderCurriculumCoverage();
   }
@@ -359,11 +384,8 @@ document.addEventListener('DOMContentLoaded', () => {
   function appendSystemMessage(text) {
     const container = document.createElement('div');
     container.className = 'chat-bubble-container system';
-    container.style.cssText = 'display: flex; justify-content: center; margin: 1rem 0; width: 100%;';
     container.innerHTML = `
-      <div style="background: rgba(255,255,255,0.05); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 0.5rem 1rem; font-size: 0.9rem; color: var(--text-muted); text-align: center; max-width: 80%;">
-        ${escapeHtml(text)}
-      </div>
+      <div class="system-notice">${escapeHtml(text)}</div>
     `;
     chatHistory.appendChild(container);
     scrollToBottom();
@@ -379,7 +401,27 @@ document.addEventListener('DOMContentLoaded', () => {
     const totalQuestions = state.questionCount;
     const name = cand.member?.name || 'Unknown';
     const role = cand.member?.jobRole || 'Unknown Role';
-    feedbackCandidateMeta.textContent = `Technical Evaluation Report for ${name} (${role}) • ${totalQuestions} Questions Asked`;
+    feedbackCandidateMeta.textContent = `Assessment results for ${name} — ${role}`;
+    // Populate meta row fields
+    if (feedbackMetaName) feedbackMetaName.textContent = name;
+    if (feedbackMetaRole) feedbackMetaRole.textContent = role;
+    if (feedbackMetaQuestions) feedbackMetaQuestions.textContent = `${totalQuestions} questions`;
+
+    // Populate curriculum coverage section
+    const coverageEl = document.getElementById('feedbackCurriculumList');
+    if (coverageEl) {
+      coverageEl.innerHTML = '';
+      const topics = state.curriculumDays || [];
+      if (topics.length > 0) {
+        topics.forEach((topic) => {
+          const li = document.createElement('li');
+          li.textContent = topic.title;
+          coverageEl.appendChild(li);
+        });
+      } else {
+        coverageEl.innerHTML = '<li>General AI engineering topics</li>';
+      }
+    }
 
     if (!feedback) {
       feedbackSummaryText.textContent = 'Interview completed successfully.';

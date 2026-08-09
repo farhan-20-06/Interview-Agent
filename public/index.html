@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Technical Interview Agent</title>
-  <meta name="description" content="Practice technical interviews based on your actual AI Cohort learning journey with an adaptive AI interviewer.">
+  <title>AI Interview — Technical Assessment</title>
+  <meta name="description" content="Personalized technical interview based on your cohort learning journey. A structured AI-powered assessment for AI engineering candidates.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -17,221 +17,292 @@
     <div class="header-container">
       <div class="logo">
         <div class="logo-icon">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 2a10 10 0 1 0 10 10H12V2z"></path>
-            <path d="M12 12L2.5 7.5"></path>
-            <path d="M12 12v10"></path>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+            <path d="M6 12v5c3 3 9 3 12 0v-5"/>
           </svg>
         </div>
-        <span class="logo-text">AI Interview <span class="logo-accent">Agent</span></span>
+        <span class="logo-text">AI Interview <span class="logo-sep">·</span> <span class="logo-accent">Technical Assessment</span></span>
       </div>
-      <div class="header-badge" id="sessionStatusBadge">Cohort Practice Mode</div>
+      <div class="header-badge" id="sessionStatusBadge">Assessment Portal</div>
     </div>
   </header>
 
   <main class="main-container">
 
-    <!-- SCREEN 1: LANDING PAGE -->
+    <!-- ================================================================
+         SCREEN 1: LANDING / ENTRY PORTAL
+         ================================================================ -->
     <section id="screenLanding" class="screen active">
       <div class="landing-hero">
-        <div class="hero-tag">ENTERPRISE AI COHORT</div>
-        <h1 class="hero-title">Practice Technical Interviews Based on Your Actual Learning Journey</h1>
+        <div class="hero-tag">AI Engineering Cohort</div>
+        <h1 class="hero-title">AI Interview<br>Technical Assessment</h1>
         <p class="hero-description">
-          An adaptive AI interviewer that evaluates your technical mastery, probes misconceptions, and scales question difficulty dynamically based on your responses.
+          Personalized technical interview based on your cohort learning journey. Questions are dynamically scoped to your completed curriculum.
         </p>
-        
+
         <div class="hero-actions">
           <button id="btnStartPractice" class="btn btn-primary btn-large">
-            <span>Start Practice Interview</span>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+            <span>Begin Assessment</span>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
           </button>
         </div>
 
-        <!-- Features grid -->
         <div class="features-grid">
           <div class="feature-card">
-            <div class="feature-icon icon-purple">⚡</div>
+            <div class="feature-icon-wrap">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            </div>
             <h3>Adaptive Questioning</h3>
-            <p>Demonstrate strong knowledge to trigger advanced architectural trade-off scenarios, or receive fundamentals probing when answers are developing.</p>
+            <p>Difficulty and depth adjust based on your responses. Strong answers trigger advanced follow-up; developing answers receive targeted probing.</p>
           </div>
           <div class="feature-card">
-            <div class="feature-icon icon-blue">🎯</div>
-            <h3>Targeted Curriculum Coverage</h3>
-            <p>Questions specifically target topics from completed cohort missions across embeddings, vector databases, retrieval engines, and guardrails.</p>
+            <div class="feature-icon-wrap">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+            </div>
+            <h3>Curriculum-Aligned</h3>
+            <p>Questions specifically target topics from your completed cohort missions: embeddings, vector databases, retrieval, prompt engineering, and agents.</p>
           </div>
           <div class="feature-card">
-            <div class="feature-icon icon-green">📊</div>
-            <h3>Structured Evaluation</h3>
-            <p>Receive comprehensive post-interview feedback highlighting key strengths, critical knowledge gaps, and recommended learning steps.</p>
+            <div class="feature-icon-wrap">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            </div>
+            <h3>Structured Feedback</h3>
+            <p>Receive a detailed evaluation report with technical strengths, knowledge gaps, and actionable next steps.</p>
           </div>
         </div>
       </div>
     </section>
 
 
-    <!-- SCREEN 2: CANDIDATE SELECTION -->
+    <!-- ================================================================
+         SCREEN 2: CANDIDATE SELECTION
+         ================================================================ -->
     <section id="screenCandidateSelect" class="screen">
       <div class="section-header">
-        <h2>Select Candidate Profile</h2>
-        <p>Choose a cohort member profile to launch their custom technical interview session.</p>
+        <div>
+          <h2>Select Candidate</h2>
+          <p>Choose a candidate profile to begin their personalized technical interview.</p>
+        </div>
       </div>
 
       <div id="candidateLoading" class="loading-container">
         <div class="spinner"></div>
-        <p>Loading candidate profiles...</p>
+        <p>Loading candidate profiles…</p>
       </div>
 
       <div id="candidateError" class="error-banner hidden"></div>
 
+      <!-- Table header -->
+      <div class="candidate-table-header">
+        <span style="grid-column: 2;">Candidate</span>
+        <span>Experience</span>
+        <span>Education</span>
+        <span>Progress</span>
+        <span></span>
+      </div>
+
       <div id="candidateGrid" class="candidate-grid">
-        <!-- Candidate Cards will be rendered dynamically -->
+        <!-- Candidate rows rendered dynamically by app.js -->
       </div>
     </section>
 
 
-    <!-- SCREEN 3: INTERVIEW SCREEN -->
+    <!-- ================================================================
+         SCREEN 3: INTERVIEW
+         ================================================================ -->
     <section id="screenInterview" class="screen">
       <div class="interview-layout">
-        
-        <!-- Left Sidebar: Progress & Curriculum Coverage -->
+
+        <!-- Left Sidebar -->
         <aside class="interview-sidebar">
+
+          <!-- Candidate Card -->
           <div class="sidebar-card candidate-info-card">
             <div class="avatar-large" id="sidebarAvatar">AC</div>
             <div class="candidate-meta">
-              <h3 id="sidebarCandidateName">Alex Chen</h3>
+              <h3 id="sidebarCandidateName">Candidate Name</h3>
               <span id="sidebarCandidateRole" class="role-badge">AI Engineer</span>
-              <span id="sidebarCandidateExp" class="exp-label">2 years experience</span>
+              <span id="sidebarCandidateExp" class="exp-label"></span>
             </div>
           </div>
 
+          <!-- Progress -->
           <div class="sidebar-card progress-card">
-            <div class="card-header">
-              <span class="card-title">Interview Progress</span>
-              <span id="questionProgressText" class="progress-counter">Question 1</span>
+            <div class="sidebar-section-label">Progress</div>
+            <div class="progress-row">
+              <span id="questionProgressText" class="progress-counter">Starting</span>
             </div>
+            <p class="progress-note">Interview length adapts to your responses.</p>
           </div>
 
+          <!-- Assessment Areas -->
           <div class="sidebar-card coverage-card">
-            <div class="card-header">
-              <span class="card-title">Curriculum Coverage</span>
-            </div>
+            <div class="sidebar-section-label">Assessment Areas</div>
             <div id="curriculumCoverageList" class="coverage-list">
               <!-- Coverage items injected dynamically -->
             </div>
           </div>
 
-          <button id="btnEndInterview" class="btn btn-secondary" style="width: 100%; margin-top: 1rem; border: 1px solid var(--border-subtle); color: var(--text-muted); background: transparent;">
+          <button id="btnEndInterview" class="btn btn-ghost btn-end-interview">
             End Interview Early
           </button>
         </aside>
 
-        <!-- Right Main Chat Area -->
+        <!-- Right: Chat / Interview Area -->
         <div class="interview-main">
-          
-          <!-- Alert Banner for errors -->
-          <div id="chatErrorBanner" class="error-banner hidden"></div>
 
-          <!-- Message History Container -->
-          <div id="chatHistory" class="chat-history">
-            <!-- Chat messages dynamically rendered here -->
+          <!-- Interview panel header -->
+          <div class="interview-main-header">
+            <div class="interview-header-left">
+              <div class="interview-main-title">AI Technical Interview</div>
+              <div class="interview-header-candidate">
+                <span id="interviewHeaderCandidateName"></span>
+                <span class="interview-header-sep" id="interviewHeaderSep"> · </span>
+                <span id="interviewHeaderCandidateMeta" class="interview-header-meta"></span>
+              </div>
+            </div>
+            <div id="interviewProgressBadge" class="interview-progress-label">Starting</div>
           </div>
 
-          <!-- Typing / Evaluating Loading State -->
+          <!-- Error Banner -->
+          <div id="chatErrorBanner" class="error-banner hidden" style="margin: 12px 20px 0; margin-bottom: 0;"></div>
+
+          <!-- Message History -->
+          <div id="chatHistory" class="chat-history">
+            <!-- Chat messages rendered dynamically -->
+          </div>
+
+          <!-- Typing / Evaluating State -->
           <div id="typingIndicator" class="typing-indicator hidden">
             <div class="typing-dot"></div>
             <div class="typing-dot"></div>
             <div class="typing-dot"></div>
-            <span>AI Interviewer is evaluating your answer and formulating the next question...</span>
+            <span>AI Interviewer is evaluating your response…</span>
           </div>
 
-          <!-- Answer Input Controls -->
+          <!-- Answer Input -->
           <div class="chat-input-area" id="answerInputArea">
-            <textarea 
-              id="answerInput" 
-              class="answer-textarea" 
-              placeholder="Type your technical response here... (Press Ctrl+Enter or click Send)" 
+            <textarea
+              id="answerInput"
+              class="answer-textarea"
+              placeholder="Type your response here…"
               rows="3"
             ></textarea>
             <div class="input-actions">
-              <span class="input-hint">Tip: Provide clear reasoning and trade-offs in your answers.</span>
+              <span class="input-hint">
+                <kbd class="kbd">Ctrl</kbd>+<kbd class="kbd">Enter</kbd> to send
+              </span>
               <button id="btnSendAnswer" class="btn btn-primary">
-                <span>Send Response</span>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                <span>Send Answer</span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
               </button>
             </div>
           </div>
 
-          <!-- View Results Button Area -->
-          <div class="chat-input-area hidden" id="viewResultsArea" style="justify-content: center; align-items: center; padding: 2rem 1rem;">
-            <button id="btnViewResults" class="btn btn-primary" style="width: auto; padding: 0.8rem 2.5rem; font-size: 1.1rem; display: flex; align-items: center; gap: 0.5rem; background: var(--success); border-color: var(--success);">
-              <span>View Interview Results</span>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-            </button>
+          <!-- View Results (shown after interview ends) -->
+          <div class="chat-input-area results-ready-area hidden" id="viewResultsArea">
+            <div class="results-ready-inner">
+              <p class="results-ready-note">Interview complete. Review your feedback below.</p>
+              <button id="btnViewResults" class="btn btn-success btn-large">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                <span>View Interview Results</span>
+              </button>
+            </div>
           </div>
 
         </div>
-
       </div>
     </section>
 
 
-    <!-- SCREEN 4: FINAL FEEDBACK SCREEN -->
+    <!-- ================================================================
+         SCREEN 4: FEEDBACK / RESULTS
+         ================================================================ -->
     <section id="screenFeedback" class="screen">
       <div class="feedback-container">
-        
+
+        <!-- Page header -->
         <div class="feedback-header">
-          <div class="completed-badge">✓ Interview Completed</div>
-          <h1 class="feedback-title">Final Candidate Assessment</h1>
-          <p class="feedback-subtitle" id="feedbackCandidateMeta">Technical Interview Results for Alex Chen (AI Engineer)</p>
+          <div class="completed-badge">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            Interview Completed
+          </div>
+          <h1 class="feedback-title">Technical Interview Assessment</h1>
+          <p class="feedback-subtitle" id="feedbackCandidateMeta">Assessment results for candidate</p>
         </div>
 
-        <!-- Overall Summary Card -->
-        <div class="feedback-card summary-card">
-          <div class="card-icon">📋</div>
-          <div class="card-content">
-            <h3>Executive Summary</h3>
-            <p id="feedbackSummaryText">Loading summary...</p>
+        <!-- Candidate info bar -->
+        <div class="feedback-meta-row" id="feedbackMetaRow">
+          <div class="feedback-meta-item">
+            <span class="feedback-meta-label">Candidate</span>
+            <span class="feedback-meta-value" id="feedbackMetaName">—</span>
+          </div>
+          <div class="feedback-meta-sep"></div>
+          <div class="feedback-meta-item">
+            <span class="feedback-meta-label">Role</span>
+            <span class="feedback-meta-value" id="feedbackMetaRole">—</span>
+          </div>
+          <div class="feedback-meta-sep"></div>
+          <div class="feedback-meta-item">
+            <span class="feedback-meta-label">Questions Answered</span>
+            <span class="feedback-meta-value" id="feedbackMetaQuestions">—</span>
           </div>
         </div>
 
+        <!-- Overall Assessment -->
+        <div class="feedback-card summary-card">
+          <div class="card-title-row">
+            <h3>Overall Assessment</h3>
+          </div>
+          <div class="card-content">
+            <p id="feedbackSummaryText">Loading assessment…</p>
+          </div>
+        </div>
+
+        <!-- Strengths & Gaps grid -->
         <div class="feedback-grid">
-          <!-- Strengths Card -->
+
           <div class="feedback-card strengths-card">
             <div class="card-title-row">
-              <span class="card-icon">💪</span>
-              <h3>Key Strengths</h3>
+              <h3>Technical Strengths</h3>
             </div>
             <ul id="feedbackStrengthsList" class="feedback-list green-bullets">
-              <!-- Strengths injected here -->
             </ul>
           </div>
 
-          <!-- Gaps Card -->
           <div class="feedback-card gaps-card">
             <div class="card-title-row">
-              <span class="card-icon">🎯</span>
-              <h3>Identified Knowledge Gaps</h3>
+              <h3>Areas for Improvement</h3>
             </div>
             <ul id="feedbackGapsList" class="feedback-list amber-bullets">
-              <!-- Gaps injected here -->
             </ul>
           </div>
+
         </div>
 
         <!-- Recommended Next Steps -->
         <div class="feedback-card next-steps-card">
           <div class="card-title-row">
-            <span class="card-icon">🚀</span>
-            <h3>Recommended Learning Next Steps</h3>
+            <h3>Recommended Next Steps</h3>
           </div>
           <ul id="feedbackNextList" class="feedback-list blue-bullets">
-            <!-- Next steps injected here -->
+          </ul>
+        </div>
+
+        <!-- Curriculum Coverage -->
+        <div class="feedback-card curriculum-card">
+          <div class="card-title-row">
+            <h3>Curriculum Coverage</h3>
+          </div>
+          <p class="curriculum-note">Topics assessed during this interview session, based on your cohort progress.</p>
+          <ul id="feedbackCurriculumList" class="feedback-list coverage-bullets">
           </ul>
         </div>
 
         <div class="feedback-actions">
-          <button id="btnRestart" class="btn btn-secondary btn-large">
-            <span>Select Another Candidate</span>
+          <button id="btnRestart" class="btn btn-secondary">
+            Select Another Candidate
           </button>
         </div>
 
